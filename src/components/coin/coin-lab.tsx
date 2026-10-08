@@ -5,6 +5,8 @@
 import { useState } from "react";
 import { TOPIC_LIST } from "@/lib/topics";
 import { cn } from "@/lib/utils";
+import { useTokenLook } from "@/lib/engagement";
+import { TokenLookToggle } from "@/components/wce/topic-coin";
 import { Coin, type CoinState } from "./coin";
 
 const STATES: { id: string; label: string; state: CoinState; pct: number }[] = [
@@ -17,31 +19,36 @@ const STATES: { id: string; label: string; state: CoinState; pct: number }[] = [
 export function CoinLab() {
   const [stateId, setStateId] = useState("half");
   const st = STATES.find((s) => s.id === stateId)!;
+  const look = useTokenLook();
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-[18px] font-medium">Coin lab</h2>
           <p className="text-[14px] text-white/55">
-            One struck-metal coin per topic. Coins polish up as you progress.
-            Move over a coin to tilt it, click to inspect it.
+            One token per topic, as a struck coin or a cosmic stone. Tokens
+            polish up as you progress. Move over a coin to tilt it, click to
+            inspect it.
           </p>
         </div>
-        <div className="flex items-center rounded-xl border border-white/10 bg-white/5 p-1">
-          {STATES.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setStateId(s.id)}
-              className={cn(
-                "h-[30px] rounded-lg px-3 text-[13px] font-medium transition-all",
-                stateId === s.id
-                  ? "border border-white/10 bg-white/5 text-white"
-                  : "border border-transparent text-white/55 hover:text-white",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <TokenLookToggle />
+          <div className="flex items-center rounded-xl border border-white/10 bg-white/5 p-1">
+            {STATES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStateId(s.id)}
+                className={cn(
+                  "h-[30px] rounded-lg px-3 text-[13px] font-medium transition-all",
+                  stateId === s.id
+                    ? "border border-white/10 bg-white/5 text-white"
+                    : "border border-transparent text-white/55 hover:text-white",
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="glass p-5">
@@ -53,6 +60,7 @@ export function CoinLab() {
                 state={st.state}
                 pct={st.pct}
                 size={200}
+                look={look}
                 stats={
                   st.state === "locked"
                     ? { primary: "Soon", lines: ["Coming to the Academy"] }

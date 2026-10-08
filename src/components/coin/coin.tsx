@@ -10,10 +10,10 @@ import { Lock } from "lucide-react"
 import type { Topic } from "@/lib/topics"
 import { cn } from "@/lib/utils"
 import type { FaceStats } from "./coin-art"
-import { mountCoin, type CoinHandle, type CoinState } from "./coin-engine"
+import { mountCoin, type CoinHandle, type CoinLook, type CoinState } from "./coin-engine"
 import { openInspector, useInspectedKey } from "./inspector-store"
 
-export type { CoinState }
+export type { CoinLook, CoinState }
 
 export type CoinProps = {
   topic: Topic
@@ -23,6 +23,8 @@ export type CoinProps = {
   size: number
   /** Progress shown on the reverse. */
   stats?: FaceStats
+  /** Struck coins or cosmic stones. */
+  look?: CoinLook
   float?: boolean
   className?: string
   label?: string
@@ -34,6 +36,7 @@ export function CoinCanvas({
   state,
   pct = 0,
   stats,
+  look = "coins",
   rx,
   ry,
   scale = 1,
@@ -42,9 +45,9 @@ export function CoinCanvas({
 }: Omit<CoinProps, "size"> & { rx: number; ry: number; scale?: number; ease?: number }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const handle = useRef<CoinHandle | null>(null)
-  const spec = { topic, state, pct, stats }
+  const spec = { topic, state, pct, stats, look }
   const latest = useRef(spec)
-  const specKey = `${topic.id}|${state}|${pct}|${stats ? [stats.primary, ...stats.lines].join("|") : ""}`
+  const specKey = `${topic.id}|${state}|${pct}|${look}|${stats ? [stats.primary, ...stats.lines].join("|") : ""}`
 
   useEffect(() => {
     latest.current = spec

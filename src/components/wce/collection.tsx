@@ -9,7 +9,7 @@ import { COURSES } from "@/lib/courses"
 import { courseProgress, fmtPoints, topicProgress, useProgress, type Progress } from "@/lib/progress"
 import { TOPIC_LIST, type Topic } from "@/lib/topics"
 import { cn } from "@/lib/utils"
-import { TopicCoin } from "./topic-coin"
+import { TokenLookToggle, TopicCoin } from "./topic-coin"
 
 const STATE_LABEL = { locked: "Coming soon", new: "Not started", active: "Polishing", mastered: "Mastered" } as const
 
@@ -85,9 +85,12 @@ export function Collection() {
             One coin per topic, whoever teaches it. Coins start tarnished and polish up as you learn. Tap a coin to inspect it.
           </p>
         </div>
-        <p className="text-[14px] text-white/60 tabular-nums">
-          <span className="text-[22px] font-medium text-white">{earned}</span> / {open} mastered
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="text-[14px] text-white/60 tabular-nums">
+            <span className="text-[22px] font-medium text-white">{earned}</span> / {open} mastered
+          </p>
+          <TokenLookToggle />
+        </div>
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         {TOPIC_LIST.map((t) => (

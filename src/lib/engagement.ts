@@ -211,3 +211,10 @@ export function useLeague() {
   return { ...s, now, weekXp: now ? xpInWeek(events, weekId(now)) : 0 }
 }
 
+// ---------------------------------------------------------------------------
+// Topic token look (testing two directions: struck "coins" vs cosmic "stones")
+
+export type TokenLook = "coins" | "stones"
+const lookStore = createStore<{ look: TokenLook }>("wce-academy-look-v1", { look: "coins" })
+export const useTokenLook = () => lookStore.use().look
+export const setTokenLook = (look: TokenLook) => lookStore.write({ look })
