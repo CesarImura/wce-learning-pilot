@@ -124,7 +124,11 @@ export function Coin(props: CoinProps) {
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inspect(e)}
       onPointerMove={onMove}
       onPointerLeave={onLeave}
-      className={cn("relative shrink-0 cursor-zoom-in select-none outline-none", float && "coin-float", className)}
+      className={cn(
+        "relative shrink-0 cursor-zoom-in select-none outline-none",
+        float && "coin-float",
+        className,
+      )}
       style={{ width: size, height: size, visibility: inspected ? "hidden" : undefined }}
     >
       {/* soft contact shadow */}

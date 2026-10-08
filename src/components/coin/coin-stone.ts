@@ -1,7 +1,7 @@
 // "Stones": the cosmic-crystal look for topic tokens, an alternative to the struck coins.
-// Each topic is a holographic crystal in front of wide prismatic light beams, after the
-// "Super Stars" reference: chrome-bright glass whose thin-film colour (pink, cyan, gold)
-// slides across softly bevelled facets as it turns. Topics you haven't unlocked are still
+// Each topic is a transparent crystal in front of wide prismatic light beams, after the
+// "Super Stars" reference: real glass (three.js transmission) that refracts the beams,
+// splits them into rainbow fringes and carries a faint iridescent sheen. Topics you haven't unlocked are still
 // sealed in a geode; starting one cracks it open (the reveal).
 // The stars, glow and beams sit in a backdrop that doesn't turn with the stone.
 // Brilliance tracks progress: a fresh stone is quieter, a mastered one blazes.
@@ -359,12 +359,26 @@ export function stoneModel(spec: CoinSpec, renderer: THREE.WebGLRenderer): Stone
   const disposables: { dispose: () => void }[] = []
   const track = <T extends { dispose: () => void }>(x: T) => (disposables.push(x), x)
   const additive = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false } as const
+  // The backdrop glows additively but is drawn in the *opaque* pass (transparent: false):
+  // three.js glass (transmission) only refracts opaque objects, and this way the stone
+  // shows the beams and stars bent through it.
+  const light = { ...additive, transparent: false } as const
 
   // Backdrop: a navy-violet glow, stars, and (once unlocked) wide prismatic beams
   // fanning out from behind the stone. It doesn't rotate.
   backdrop.position.z = -0.8
   const beams: THREE.MeshBasicMaterial[] = []
-  const glow = new THREE.Sprite(track(new THREE.SpriteMaterial({ ...additive, map: nebula(), color: new THREE.Color(1, 1, 1).multiplyScalar(state === "locked" ? 0.35 : 0.8) })))
+  // Black backing seen only by the glass. three.js fills the glass (transmission)
+  // buffer with 50% white when the canvas is transparent, which makes clear glass look
+  // milky; this plane paints that buffer black and stays invisible in the real render.
+  const backing = new THREE.Mesh(track(new THREE.PlaneGeometry(12, 12)), track(new THREE.MeshBasicMaterial({ color: 0x000000, depthWrite: false })))
+  backing.position.z = -0.5
+  backing.renderOrder = -4
+  backing.onBeforeRender = (renderer, _scene, _camera, _geometry, material) => {
+    material.colorWrite = renderer.getRenderTarget() !== null
+  }
+  backdrop.add(backing)
+  const glow = new THREE.Sprite(track(new THREE.SpriteMaterial({ ...light, map: nebula(), color: new THREE.Color(1, 1, 1).multiplyScalar(state === "locked" ? 0.35 : 0.8) })))
   glow.scale.setScalar(2.3)
   glow.renderOrder = -3
   backdrop.add(glow)
@@ -377,7 +391,7 @@ export function stoneModel(spec: CoinSpec, renderer: THREE.WebGLRenderer): Stone
       plane.translate(len / 2, 0, 0)
       // each beam leans to one hue, like light split by the stone
       const hue = new THREE.Color(BEAM_HUES[i % BEAM_HUES.length]).lerp(new THREE.Color(1, 1, 1), 0.25)
-      const mat = track(new THREE.MeshBasicMaterial({ ...additive, map: prism(), color: hue.multiplyScalar(0.28 + 0.5 * brilliance), side: THREE.DoubleSide }))
+      const mat = track(new THREE.MeshBasicMaterial({ ...light, map: prism(), color: hue.multiplyScalar(0.28 + 0.5 * brilliance), side: THREE.DoubleSide }))
       beams.push(mat)
       const m = new THREE.Mesh(plane, mat)
       m.rotation.z = base + (i / n) * Math.PI * 2 + (r() - 0.5) * 0.45
@@ -397,7 +411,7 @@ export function stoneModel(spec: CoinSpec, renderer: THREE.WebGLRenderer): Stone
   const starGeo = track(new THREE.BufferGeometry())
   starGeo.setAttribute("position", new THREE.Float32BufferAttribute(starPos, 3))
   starGeo.setAttribute("color", new THREE.Float32BufferAttribute(starCol, 3))
-  const stars = new THREE.Points(starGeo, track(new THREE.PointsMaterial({ ...additive, size: 1.5, sizeAttenuation: false, vertexColors: true })))
+  const stars = new THREE.Points(starGeo, track(new THREE.PointsMaterial({ ...light, size: 1.5, sizeAttenuation: false, vertexColors: true })))
   stars.renderOrder = -2
   backdrop.add(stars)
 
@@ -406,21 +420,30 @@ export function stoneModel(spec: CoinSpec, renderer: THREE.WebGLRenderer): Stone
   const flares: { s: THREE.Sprite; base: number; phase: number }[] = []
   if (!sealed) {
     const geo = track(crystal(topic))
-    // holographic glass: chrome-bright, softly bevelled, with thin-film colour (pink,
-    // cyan, gold) sliding across the arms as it turns
+    // real glass (three.js transmission): it refracts the beams and stars behind it,
+    // splits them into rainbow fringes (dispersion), with a faint iridescent sheen and
+    // soft bevels; back faces render too, so inner facets show through
     const soft = track(toCreasedNormals(geo, 0.95))
     const glass = track(
       new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(1, 1, 1).lerp(new THREE.Color(topic.color), 0.12),
-        metalness: 0.75,
-        roughness: 0.16,
-        iridescence: 1,
-        iridescenceIOR: 1.75,
-        iridescenceThicknessRange: [120, 900],
-        clearcoat: 1,
-        clearcoatRoughness: 0.06,
+        color: "#ffffff",
+        metalness: 0,
+        roughness: 0.03,
+        transmission: 1,
+        thickness: 0.9,
+        ior: 2.1,
+        dispersion: 6,
+        attenuationColor: new THREE.Color(1, 1, 1).lerp(new THREE.Color(topic.color), 0.25),
+        attenuationDistance: 2.5,
+        iridescence: 0.35,
+        iridescenceIOR: 1.6,
+        iridescenceThicknessRange: [150, 700],
+        specularIntensity: 1,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.04,
         envMap: prismReflections(renderer),
-        envMapIntensity: 0.9 + 0.9 * brilliance,
+        envMapIntensity: 0.12 + 0.25 * brilliance,
+        side: THREE.FrontSide,
       }),
     )
     gem.add(new THREE.Mesh(soft, glass))
