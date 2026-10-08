@@ -1,17 +1,13 @@
 // "Stones": the cosmic-crystal look for topic tokens, an alternative to the struck coins.
-// Each topic is a faceted crystal in front of soft prism light. Topics you haven't
-// unlocked are still sealed in a geode; starting one cracks it open (the reveal).
-//
-// The glass is faked rather than ray traced, so it stays cheap enough for lists:
-//  - inside: three additive layers sample a dim world of soft light strips through
-//    refraction, one per colour channel at a slightly different index, so colour only
-//    fringes at the facet edges, as in real glass;
-//  - outside: a faint shell reflects that world, and the edges catch a little light;
-//  - behind: a static backdrop of stars and faint beams that doesn't turn with the stone.
-// Brilliance tracks progress: a fresh stone is quiet, a mastered one glows.
+// Each topic is a holographic crystal in front of wide prismatic light beams, after the
+// "Super Stars" reference: chrome-bright glass whose thin-film colour (pink, cyan, gold)
+// slides across softly bevelled facets as it turns. Topics you haven't unlocked are still
+// sealed in a geode; starting one cracks it open (the reveal).
+// The stars, glow and beams sit in a backdrop that doesn't turn with the stone.
+// Brilliance tracks progress: a fresh stone is quieter, a mastered one blazes.
 
 import * as THREE from "three"
-import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js"
+import { mergeVertices, toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { rng } from "@/lib/market"
 import type { Topic } from "@/lib/topics"
 import type { CoinSpec } from "./coin-engine"
@@ -26,47 +22,9 @@ export type StoneModel = {
 }
 
 // ---------------------------------------------------------------------------
-// Shared textures and the environment the glass sees
+// Shared textures
 
-let beamTex: THREE.Texture | null = null
 let flareTex: THREE.Texture | null = null
-let refraction: THREE.CubeTexture | null = null
-let reflection: THREE.Texture | null = null
-
-/** A light beam: a soft white core with faint spectral fringes, fading along its length. */
-function beam() {
-  if (beamTex) return beamTex
-  const c = document.createElement("canvas")
-  c.width = 256
-  c.height = 64
-  const ctx = c.getContext("2d")!
-  const across = ctx.createLinearGradient(0, 0, 0, 64)
-  ;[
-    [0, "#ff9a7a"],
-    [0.3, "#ffe9c4"],
-    [0.5, "#ffffff"],
-    [0.7, "#cfe8ff"],
-    [1, "#a99cff"],
-  ].forEach(([o, col]) => across.addColorStop(o as number, col as string))
-  ctx.fillStyle = across
-  ctx.fillRect(0, 0, 256, 64)
-  ctx.globalCompositeOperation = "destination-in"
-  const along = ctx.createLinearGradient(0, 0, 256, 0)
-  along.addColorStop(0, "rgba(0,0,0,0.8)")
-  along.addColorStop(0.45, "rgba(0,0,0,0.3)")
-  along.addColorStop(1, "rgba(0,0,0,0)")
-  ctx.fillStyle = along
-  ctx.fillRect(0, 0, 256, 64)
-  const edge = ctx.createLinearGradient(0, 0, 0, 64)
-  edge.addColorStop(0, "rgba(0,0,0,0)")
-  edge.addColorStop(0.5, "rgba(0,0,0,1)")
-  edge.addColorStop(1, "rgba(0,0,0,0)")
-  ctx.fillStyle = edge
-  ctx.fillRect(0, 0, 256, 64)
-  beamTex = new THREE.CanvasTexture(c)
-  beamTex.colorSpace = THREE.SRGBColorSpace
-  return beamTex
-}
 
 /** A small star glint: soft glow with thin cross streaks. */
 function flare() {
@@ -93,60 +51,6 @@ function flare() {
   }
   flareTex = new THREE.CanvasTexture(c)
   return flareTex
-}
-
-/**
- * The world the crystals see: near-black space with soft light panels, mostly white,
- * a few faintly tinted. Rendered into a cube map for refraction and pre-filtered for
- * reflections, so the glass reads dark and clear with crisp highlights.
- */
-function spaceMaps(renderer: THREE.WebGLRenderer) {
-  if (refraction && reflection) return { refraction, reflection }
-  const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x020203)
-  const r = rng(42)
-  const tints = ["#ffffff", "#ffffff", "#ffffff", "#fff1dc", "#dcecff", "#ffd9c8", "#e6dcff"]
-  for (let i = 0; i < 60; i++) {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.5 + r() * 6, 0.1 + r() * 0.9),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(tints[i % tints.length]).multiplyScalar(0.6 + r() * 1.6), side: THREE.DoubleSide }),
-    )
-    m.position.copy(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize().multiplyScalar(5 + r() * 4))
-    m.lookAt(0, 0, 0)
-    m.rotateZ(r() * Math.PI)
-    scene.add(m)
-  }
-  // big soft glows, so facets shade across their surface instead of reading flat
-  const glow = document.createElement("canvas")
-  glow.width = glow.height = 128
-  const gctx = glow.getContext("2d")!
-  const grad = gctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-  grad.addColorStop(0, "rgba(255,255,255,1)")
-  grad.addColorStop(1, "rgba(255,255,255,0)")
-  gctx.fillStyle = grad
-  gctx.fillRect(0, 0, 128, 128)
-  const glowTex = new THREE.CanvasTexture(glow)
-  for (let i = 0; i < 10; i++) {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(9, 9),
-      new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: new THREE.Color(tints[i % tints.length]).multiplyScalar(0.25 + r() * 0.35), side: THREE.DoubleSide }),
-    )
-    m.position.copy(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize().multiplyScalar(7))
-    m.lookAt(0, 0, 0)
-    scene.add(m)
-  }
-  const rt = new THREE.WebGLCubeRenderTarget(512, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter })
-  // the shared renderer runs with autoClear off; the cube faces need clearing
-  const autoClear = renderer.autoClear
-  renderer.autoClear = true
-  new THREE.CubeCamera(0.1, 100, rt).update(renderer, scene)
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  reflection = pmrem.fromScene(scene, 0.015).texture
-  pmrem.dispose()
-  renderer.autoClear = autoClear
-  rt.texture.mapping = THREE.CubeRefractionMapping
-  refraction = rt.texture
-  return { refraction, reflection }
 }
 
 // ---------------------------------------------------------------------------
@@ -196,13 +100,15 @@ function crystal(topic: Topic): THREE.BufferGeometry {
     case "octagon": {
       // eight-point star: four long arms, four short diagonals, a little depth front and back
       const f = new Facets()
+      // chunky arms; the diagonals tilt towards and away from you, so it reads in 3D
       for (let i = 0; i < 8; i++) {
         const a = (i * Math.PI) / 4 + Math.PI / 2
         const long = i % 2 === 0
-        f.spike([Math.cos(a), Math.sin(a), 0], long ? (i % 4 === 0 ? 1.12 : 0.95) : 0.55, long ? 0.2 : 0.13, long ? 0.24 : 0.16)
+        const z = long ? 0 : i % 4 === 1 ? 0.55 : -0.55
+        f.spike([Math.cos(a), Math.sin(a), z], long ? (i % 4 === 0 ? 1.12 : 0.92) : 0.68, long ? 0.26 : 0.18, long ? 0.3 : 0.2)
       }
-      f.spike([0, 0, 1], 0.42, 0.2, 0.2)
-      f.spike([0, 0, -1], 0.42, 0.2, 0.2)
+      f.spike([0, 0, 1], 0.5, 0.26, 0.26)
+      f.spike([0, 0, -1], 0.5, 0.26, 0.26)
       return f.geometry()
     }
     case "scallop": {
@@ -253,6 +159,98 @@ function crystal(topic: Topic): THREE.BufferGeometry {
       return f.geometry()
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// The prism look (after the "Super Stars" reference): holographic glass reflecting a
+// world of rainbow light, in front of wide prismatic beams on a navy-violet glow.
+
+let prismTex: THREE.Texture | null = null
+let glowTex: THREE.Texture | null = null
+let prismEnv: THREE.Texture | null = null
+
+/** A wide prismatic beam: a white-hot core with spectrum on both sides, fading outwards. */
+function prism() {
+  if (prismTex) return prismTex
+  const c = document.createElement("canvas")
+  c.width = 512
+  c.height = 128
+  const ctx = c.getContext("2d")!
+  const across = ctx.createLinearGradient(0, 0, 0, 128)
+  ;[
+    [0, "#7a5cff"],
+    [0.18, "#3fb6ff"],
+    [0.36, "#bff3ff"],
+    [0.5, "#ffffff"],
+    [0.64, "#fff2b8"],
+    [0.8, "#ffb36b"],
+    [1, "#ff6aa8"],
+  ].forEach(([o, col]) => across.addColorStop(o as number, col as string))
+  ctx.fillStyle = across
+  ctx.fillRect(0, 0, 512, 128)
+  ctx.globalCompositeOperation = "destination-in"
+  const along = ctx.createLinearGradient(0, 0, 512, 0)
+  along.addColorStop(0, "rgba(0,0,0,0.25)")
+  along.addColorStop(0.15, "rgba(0,0,0,0.9)")
+  along.addColorStop(0.6, "rgba(0,0,0,0.55)")
+  along.addColorStop(1, "rgba(0,0,0,0)")
+  ctx.fillStyle = along
+  ctx.fillRect(0, 0, 512, 128)
+  const edge = ctx.createLinearGradient(0, 0, 0, 128)
+  edge.addColorStop(0, "rgba(0,0,0,0)")
+  edge.addColorStop(0.5, "rgba(0,0,0,1)")
+  edge.addColorStop(1, "rgba(0,0,0,0)")
+  ctx.fillStyle = edge
+  ctx.fillRect(0, 0, 512, 128)
+  prismTex = new THREE.CanvasTexture(c)
+  prismTex.colorSpace = THREE.SRGBColorSpace
+  return prismTex
+}
+
+const BEAM_HUES = ["#7fe3ff", "#ffe08a", "#b49bff", "#ffffff", "#ff9ccf", "#8fffe0", "#ffc27a", "#9fc2ff", "#ffffff"]
+
+/** Deep navy-violet space glow behind the stone. */
+function nebula() {
+  if (glowTex) return glowTex
+  const c = document.createElement("canvas")
+  c.width = c.height = 256
+  const ctx = c.getContext("2d")!
+  const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128)
+  g.addColorStop(0, "rgba(70,60,150,0.9)")
+  g.addColorStop(0.45, "rgba(24,30,90,0.55)")
+  g.addColorStop(1, "rgba(10,12,40,0)")
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 256, 256)
+  glowTex = new THREE.CanvasTexture(c)
+  glowTex.colorSpace = THREE.SRGBColorSpace
+  return glowTex
+}
+
+/** The world the holographic glass reflects: navy space crossed by rainbow light. */
+function prismReflections(renderer: THREE.WebGLRenderer) {
+  if (prismEnv) return prismEnv
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x0b0d26)
+  const r = rng(7)
+  // saturated hue strips (pink, cyan, gold, violet, mint) with the odd white one
+  const hues = ["#ff6fbf", "#4fc8ff", "#ffd56b", "#9a72ff", "#6dffd2", "#ff9a5c", "#ffffff"]
+  for (let i = 0; i < 56; i++) {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(3 + r() * 8, 0.4 + r() * 1.8),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(hues[i % hues.length]).multiplyScalar(1.4 + r() * 1.6), side: THREE.DoubleSide }),
+    )
+    m.position.copy(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize().multiplyScalar(5 + r() * 3))
+    m.lookAt(0, 0, 0)
+    m.rotateZ(r() * Math.PI)
+    scene.add(m)
+  }
+  const autoClear = renderer.autoClear
+  renderer.autoClear = true
+  const pmrem = new THREE.PMREMGenerator(renderer)
+  prismEnv = pmrem.fromScene(scene, 0.035).texture
+  pmrem.dispose()
+  renderer.autoClear = autoClear
+  return prismEnv
 }
 
 // ---------------------------------------------------------------------------
@@ -362,19 +360,27 @@ export function stoneModel(spec: CoinSpec, renderer: THREE.WebGLRenderer): Stone
   const track = <T extends { dispose: () => void }>(x: T) => (disposables.push(x), x)
   const additive = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false } as const
 
-  // Backdrop: stars, and (once unlocked) a few faint beams. It doesn't rotate.
+  // Backdrop: a navy-violet glow, stars, and (once unlocked) wide prismatic beams
+  // fanning out from behind the stone. It doesn't rotate.
   backdrop.position.z = -0.8
   const beams: THREE.MeshBasicMaterial[] = []
+  const glow = new THREE.Sprite(track(new THREE.SpriteMaterial({ ...additive, map: nebula(), color: new THREE.Color(1, 1, 1).multiplyScalar(state === "locked" ? 0.35 : 0.8) })))
+  glow.scale.setScalar(2.3)
+  glow.renderOrder = -3
+  backdrop.add(glow)
   if (!sealed) {
-    const base = r() * Math.PI
-    for (let i = 0; i < 4; i++) {
-      const len = 1.1 + r() * 0.1
-      const plane = track(new THREE.PlaneGeometry(len, 0.03 + r() * 0.08))
+    const n = 9
+    const base = r() * Math.PI * 2
+    for (let i = 0; i < n; i++) {
+      const len = 1.12
+      const plane = track(new THREE.PlaneGeometry(len, 0.1 + r() * 0.42))
       plane.translate(len / 2, 0, 0)
-      const mat = track(new THREE.MeshBasicMaterial({ ...additive, map: beam(), color: new THREE.Color(1, 1, 1).multiplyScalar(0.12 + 0.3 * brilliance), side: THREE.DoubleSide }))
+      // each beam leans to one hue, like light split by the stone
+      const hue = new THREE.Color(BEAM_HUES[i % BEAM_HUES.length]).lerp(new THREE.Color(1, 1, 1), 0.25)
+      const mat = track(new THREE.MeshBasicMaterial({ ...additive, map: prism(), color: hue.multiplyScalar(0.28 + 0.5 * brilliance), side: THREE.DoubleSide }))
       beams.push(mat)
       const m = new THREE.Mesh(plane, mat)
-      m.rotation.z = base + (i % 2 ? Math.PI : 0) + Math.floor(i / 2) * (0.6 + r() * 0.5)
+      m.rotation.z = base + (i / n) * Math.PI * 2 + (r() - 0.5) * 0.45
       m.renderOrder = -2
       backdrop.add(m)
     }
@@ -400,45 +406,24 @@ export function stoneModel(spec: CoinSpec, renderer: THREE.WebGLRenderer): Stone
   const flares: { s: THREE.Sprite; base: number; phase: number }[] = []
   if (!sealed) {
     const geo = track(crystal(topic))
-    const tint = new THREE.Color(1, 1, 1).lerp(new THREE.Color(topic.color), 0.18)
-    const { refraction: env, reflection } = spaceMaps(renderer)
-    // depth pre-pass: the additive layers then light only the front surface
-    const prepass = new THREE.Mesh(geo, track(new THREE.MeshBasicMaterial({ colorWrite: false })))
-    prepass.renderOrder = -1
-    gem.add(prepass)
-    const inner = 0.4 + 0.4 * brilliance
-    ;(
-      [
-        [new THREE.Color(1, 0, 0), 0.625],
-        [new THREE.Color(0, 1, 0), 0.635],
-        [new THREE.Color(0, 0, 1), 0.645],
-      ] as const
-    ).forEach(([channel, ratio]) => {
-      const color = channel.clone().multiply(tint).multiplyScalar(inner)
-      gem.add(new THREE.Mesh(geo, track(new THREE.MeshBasicMaterial({ ...additive, toneMapped: true, envMap: env, refractionRatio: ratio, color }))))
-    })
-    gem.add(
-      new THREE.Mesh(
-        geo,
-        track(
-          new THREE.MeshPhysicalMaterial({
-            ...additive,
-            toneMapped: true,
-            color: "#ffffff",
-            metalness: 0,
-            roughness: 0.08,
-            iridescence: 0.25,
-            iridescenceIOR: 1.4,
-            clearcoat: 0.6,
-            envMap: reflection,
-            envMapIntensity: 0.7,
-            opacity: 0.25,
-          }),
-        ),
-      ),
+    // holographic glass: chrome-bright, softly bevelled, with thin-film colour (pink,
+    // cyan, gold) sliding across the arms as it turns
+    const soft = track(toCreasedNormals(geo, 0.95))
+    const glass = track(
+      new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(1, 1, 1).lerp(new THREE.Color(topic.color), 0.12),
+        metalness: 0.75,
+        roughness: 0.16,
+        iridescence: 1,
+        iridescenceIOR: 1.75,
+        iridescenceThicknessRange: [120, 900],
+        clearcoat: 1,
+        clearcoatRoughness: 0.06,
+        envMap: prismReflections(renderer),
+        envMapIntensity: 0.9 + 0.9 * brilliance,
+      }),
     )
-    const edges = track(new THREE.EdgesGeometry(geo, 12))
-    gem.add(new THREE.LineSegments(edges, track(new THREE.LineBasicMaterial({ ...additive, color: tint.clone().multiplyScalar(0.1 + 0.16 * brilliance) }))))
+    gem.add(new THREE.Mesh(soft, glass))
 
     // a glint on a tip or two; mastered stones get one at the heart
     const pos = geo.attributes.position
