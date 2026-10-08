@@ -191,7 +191,7 @@ function Stage({ item }: { item: Inspected }) {
           onPointerCancel={onPointerUp}
           onWheel={(e) => setZoom((z) => clamp(z * Math.exp(-e.deltaY * 0.0015), 0.7, 1.6))}
         >
-          <CoinCanvas {...props} className={undefined} rx={rot.rx} ry={rot.ry} ease={1} />
+          <CoinCanvas {...props} className={undefined} reveal={false} rx={rot.rx} ry={rot.ry} ease={1} />
         </div>
       </div>
 

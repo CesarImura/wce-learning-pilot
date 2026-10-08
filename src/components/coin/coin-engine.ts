@@ -22,6 +22,9 @@ export type CoinSpec = {
   pct: number;
   stats?: FaceStats;
   look?: CoinLook;
+  /** Stones only: play the geode-cracking unlock animation, then call `onRevealed`. */
+  reveal?: boolean;
+  onRevealed?: () => void;
 };
 type Pose = { rx: number; ry: number; scale: number };
 
@@ -228,6 +231,8 @@ function faceTextures(key: string, make: () => ReturnType<typeof faceMaps>) {
 
 type Model = {
   group: THREE.Group;
+  /** Scenery that stays put while the token turns (stars, light beams). */
+  backdrop?: THREE.Object3D;
   animated: boolean;
   update?: (time: number, dt: number) => void;
   dispose: () => void;
@@ -346,13 +351,17 @@ export class CoinHandle {
   rebuild() {
     if (!this.tier) return; // built on the first frame, once the size is known
     this.model?.dispose();
-    if (this.model) this.pivot.remove(this.model.group);
+    if (this.model) {
+      this.pivot.remove(this.model.group);
+      if (this.model.backdrop) this.scene.remove(this.model.backdrop);
+    }
     this.key.position.set(-3, 3, 4);
     this.model =
       this.spec.look === "stones"
         ? stoneModel(this.spec, this.eng.renderer)
         : coinModel(this.spec, this.tier, this.eng.fontsVersion, this.key);
     this.pivot.add(this.model.group);
+    if (this.model.backdrop) this.scene.add(this.model.backdrop);
     this.dirty = true;
   }
 

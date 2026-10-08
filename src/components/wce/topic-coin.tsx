@@ -1,7 +1,7 @@
 "use client"
 
 import { Coin } from "@/components/coin/coin"
-import { setTokenLook, useTokenLook, type TokenLook } from "@/lib/engagement"
+import { markRevealed, setTokenLook, useRevealed, useTokenLook, type TokenLook } from "@/lib/engagement"
 import { fmtPoints, topicProgress, useProgress } from "@/lib/progress"
 import { TOPICS, type TopicId } from "@/lib/topics"
 import { cn } from "@/lib/utils"
@@ -20,6 +20,7 @@ export function TopicCoin({
 }) {
   const p = useProgress()
   const look = useTokenLook()
+  const revealed = useRevealed()
   const topic = TOPICS[topicId]
   const tp = topicProgress(topicId, p)
   return (
@@ -29,6 +30,9 @@ export function TopicCoin({
       pct={tp.state === "mastered" ? 100 : tp.pct}
       size={size}
       look={look}
+      // the first time a started topic's stone is seen, it cracks out of its geode
+      reveal={look === "stones" && (tp.state === "active" || tp.state === "mastered") && !revealed.includes(topicId)}
+      onRevealed={() => markRevealed(topicId)}
       float={float}
       className={className}
       stats={

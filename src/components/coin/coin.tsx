@@ -25,6 +25,9 @@ export type CoinProps = {
   stats?: FaceStats
   /** Struck coins or cosmic stones. */
   look?: CoinLook
+  /** Stones: crack the geode open (the unlock animation), then call `onRevealed`. */
+  reveal?: boolean
+  onRevealed?: () => void
   float?: boolean
   className?: string
   label?: string
@@ -37,6 +40,8 @@ export function CoinCanvas({
   pct = 0,
   stats,
   look = "coins",
+  reveal = false,
+  onRevealed,
   rx,
   ry,
   scale = 1,
@@ -45,9 +50,9 @@ export function CoinCanvas({
 }: Omit<CoinProps, "size"> & { rx: number; ry: number; scale?: number; ease?: number }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const handle = useRef<CoinHandle | null>(null)
-  const spec = { topic, state, pct, stats, look }
+  const spec = { topic, state, pct, stats, look, reveal, onRevealed }
   const latest = useRef(spec)
-  const specKey = `${topic.id}|${state}|${pct}|${look}|${stats ? [stats.primary, ...stats.lines].join("|") : ""}`
+  const specKey = `${topic.id}|${state}|${pct}|${look}|${reveal}|${stats ? [stats.primary, ...stats.lines].join("|") : ""}`
 
   useEffect(() => {
     latest.current = spec

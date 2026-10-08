@@ -218,3 +218,12 @@ export type TokenLook = "coins" | "stones"
 const lookStore = createStore<{ look: TokenLook }>("wce-academy-look-v1", { look: "coins" })
 export const useTokenLook = () => lookStore.use().look
 export const setTokenLook = (look: TokenLook) => lookStore.write({ look })
+
+/** Topics whose stone has already cracked out of its geode (the reveal plays once). */
+const revealStore = createStore<{ topics: string[] }>("wce-academy-revealed-v1", { topics: [] })
+export const useRevealed = () => revealStore.use().topics
+export function markRevealed(topic: string) {
+  const { topics } = revealStore.read()
+  if (!topics.includes(topic)) revealStore.write({ topics: [...topics, topic] })
+}
+export const resetRevealed = () => revealStore.write({ topics: [] })
