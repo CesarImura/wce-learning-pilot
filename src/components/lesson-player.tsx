@@ -14,6 +14,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react"
+import { TouchStage } from "@/components/exercises/touch-stage"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ExerciseKind, Lesson, Step } from "@/lib/lessons"
@@ -705,7 +706,7 @@ export function LessonPlayer({
                   </div>
                 )}
 
-                <div>
+                <TouchStage>
                   <Exercise
                     {...step.props}
                     title={isLearn ? step.prompt : undefined}
@@ -715,7 +716,7 @@ export function LessonPlayer({
                     autoAnswer={preview === "default" || isLearn ? undefined : preview === "right" ? "correct" : "wrong"}
                     onWatch={() => setClip({ lesson: clipLesson, at: watchAt })}
                   />
-                </div>
+                </TouchStage>
               </div>
             </div>
           </main>

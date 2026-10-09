@@ -191,3 +191,22 @@
 @media (prefers-reduced-motion: reduce) {
   .coin-float { animation: none; }
 }
+
+/* Exercises on small screens (see components/exercises/touch-stage.tsx). Each SVG in a
+   .touch-stage carries --k (SVG units per screen pixel) and derived scales. */
+.touch-stage svg[data-k] text {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(var(--tboost, 1));
+}
+@media (pointer: coarse) {
+  .touch-stage svg[data-k] .touch-hit,
+  .touch-stage svg[data-k] .touch-hit-y,
+  .touch-stage svg[data-k] .touch-knob {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .touch-stage svg[data-k] .touch-hit { transform: scale(var(--hit, 1)); }
+  .touch-stage svg[data-k] .touch-hit-y { transform: scaleY(var(--hit-line, 1)); }
+  .touch-stage svg[data-k] .touch-knob { transform: scale(var(--knob, 1)); }
+}

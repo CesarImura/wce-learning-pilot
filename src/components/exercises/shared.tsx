@@ -69,7 +69,8 @@ export function useReveal(active: boolean, from: number, to: number, ms = 80) {
 }
 
 export function ChartFrame({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-lg border bg-card p-2 sm:p-3 shadow-xs", className)}>{children}</div>
+  // on phones the frame bleeds into the page margin, so charts get every pixel of width
+  return <div className={cn("-mx-2 rounded-lg border bg-card p-1.5 shadow-xs sm:mx-0 sm:p-3", className)}>{children}</div>
 }
 
 export function Stat({

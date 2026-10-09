@@ -570,8 +570,8 @@ function YieldDot({
   const drag = useDragY(svgRef, onY, disabled)
   return (
     <g {...drag} className={disabled ? "" : "cursor-ns-resize"}>
-      <rect x={cx - 24} y={cy - 24} width={48} height={48} fill="transparent" />
-      <circle cx={cx} cy={cy} r={9} fill="var(--brand)" stroke="#000" strokeWidth={3} />
+      <rect x={cx - 24} y={cy - 24} width={48} height={48} fill="transparent" className="touch-hit" />
+      <circle cx={cx} cy={cy} r={9} fill="var(--brand)" stroke="#000" strokeWidth={3} className="touch-knob" />
       <text x={cx} y={cy - 16} textAnchor="middle" className="fill-white text-[11px] font-semibold tabular-nums">
         {label}
       </text>
@@ -1243,7 +1243,7 @@ export function OrbBreakout({ phase, onReady }: ExerciseProps) {
           }
         </CandleChart>
       </ChartFrame>
-      <p className="px-1 text-[13px] text-white/50">NQ, 5-minute candles. The bars at the bottom are volume. Tap a candle.</p>
+      <p className="px-1 text-[13px] text-white/50">NQ, 5-minute candles. The bars at the bottom are volume. Tap a candle, or slide and let go on one.</p>
     </div>
   )
 }
