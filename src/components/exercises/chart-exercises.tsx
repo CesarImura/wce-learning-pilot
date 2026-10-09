@@ -58,7 +58,7 @@ export function TapEngulfing({ phase, onReady }: ExerciseProps) {
         />
       </ChartFrame>
       <p className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
-        <Hand className="size-4" /> Tap a candle to select it.
+        <Hand className="size-4" /> Tap a candle, or slide across the chart and let go on one.
       </p>
     </div>
   )

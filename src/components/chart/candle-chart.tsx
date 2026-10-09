@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, type PointerEvent, type ReactNode, type RefObject } from "react"
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode, type RefObject } from "react"
 import type { Candle } from "@/lib/market"
 import { cn } from "@/lib/utils"
 
@@ -120,15 +120,56 @@ export function CandleChart({
   const localRef = useRef<SVGSVGElement>(null)
   const ref = svgRef ?? localRef
   const [min, max] = domain ?? domainOf(candles)
-  const s = makeScale(candles.length, min, max, width, height, pad ?? (axis ? undefined : { l: 4, r: 4, t: 6, b: 6 }))
+
+  // On narrow screens a 640-wide chart would render at half size. Re-lay it out in a
+  // narrower, taller space instead: labels and candles come out larger, and the extra
+  // height gives more precision when dragging price levels. Exercises draw through the
+  // scale `s`, so they follow along unchanged.
+  const [cw, setCw] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setCw(e.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  const compact = width >= 500 && cw > 0 && cw < 560
+  const W = compact ? Math.round(Math.max(380, cw * 1.15)) : width
+  const H = compact ? Math.round(W * (height / width) * 1.35) : height
+
+  const s = makeScale(candles.length, min, max, W, H, pad ?? (axis ? undefined : { l: 4, r: 4, t: 6, b: 6 }))
   const ticks = axis ? niceTicks(min, max) : []
+
+  // Picking a candle: press anywhere and slide; the nearest candle is previewed and
+  // lifting the finger picks it. Much easier than hitting a thin column on a phone.
+  const toPoint = useSvgPoint(ref)
+  const [preview, setPreview] = useState<number | null>(null)
+  const nearest = (e: { clientX: number; clientY: number }) => Math.min(visible - 1, Math.max(0, s.index(toPoint(e).x)))
+  const scrub = onCandleClick
+    ? {
+        onPointerDown: (e: PointerEvent<SVGSVGElement>) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          setPreview(nearest(e))
+        },
+        onPointerMove: (e: PointerEvent<SVGSVGElement>) => {
+          if (preview !== null) setPreview(nearest(e))
+        },
+        onPointerUp: () => {
+          if (preview !== null) onCandleClick(preview)
+          setPreview(null)
+        },
+        onPointerCancel: () => setPreview(null),
+      }
+    : {}
+  const step = (s.right - s.left) / candles.length
 
   return (
     <svg
       ref={ref}
-      viewBox={`0 0 ${width} ${height}`}
-      className={cn("w-full select-none touch-none", className)}
+      viewBox={`0 0 ${W} ${H}`}
+      className={cn("w-full select-none touch-none", onCandleClick && "cursor-pointer", className)}
       role="img"
+      {...scrub}
     >
       {ticks.map((t) => (
         <g key={t}>
@@ -139,6 +180,12 @@ export function CandleChart({
         </g>
       ))}
       {under?.(s)}
+      {preview !== null && (
+        <g pointerEvents="none">
+          <rect x={s.x(preview) - step / 2} y={s.top} width={step} height={s.bottom - s.top} rx={3} className="fill-brand/15" />
+          <line x1={s.x(preview)} x2={s.x(preview)} y1={s.top} y2={s.bottom} className="stroke-brand" strokeDasharray="3 3" />
+        </g>
+      )}
       {candles.slice(0, visible).map((c, i) => {
         const up = c.c >= c.o
         const color = up ? "var(--up)" : "var(--down)"
@@ -146,11 +193,7 @@ export function CandleChart({
         const top = s.y(Math.max(c.o, c.c))
         const bodyH = Math.max(1, Math.abs(s.y(c.o) - s.y(c.c)))
         return (
-          <g
-            key={i}
-            onClick={onCandleClick ? () => onCandleClick(i) : undefined}
-            className={cn(onCandleClick && "cursor-pointer")}
-          >
+          <g key={i}>
             {hl && (
               <rect
                 x={s.x(i) - s.bw}
@@ -165,9 +208,6 @@ export function CandleChart({
                 )}
                 strokeWidth={1.5}
               />
-            )}
-            {onCandleClick && (
-              <rect x={s.x(i) - s.bw * 0.8} y={s.top} width={s.bw * 1.6} height={s.bottom - s.top} fill="transparent" />
             )}
             <line x1={s.x(i)} x2={s.x(i)} y1={s.y(c.h)} y2={s.y(c.l)} stroke={color} strokeWidth={1.2} />
             <rect x={s.x(i) - s.bw / 2} y={top} width={s.bw} height={bodyH} fill={color} rx={1} />
@@ -236,7 +276,7 @@ export function DragLine({
 
   return (
     <g className={cn(!disabled && "cursor-ns-resize")} {...drag}>
-      <rect x={s.left} y={y - 12} width={s.W - s.left} height={24} fill="transparent" />
+      <rect x={s.left} y={y - 12} width={s.W - s.left} height={24} fill="transparent" className="touch-hit-y" />
       <line x1={s.left} x2={s.right} y1={y} y2={y} stroke={color} strokeWidth={2} strokeDasharray={disabled ? "6 4" : undefined} />
       <rect x={s.right + 2} y={y - 10} width={s.W - s.right - 4} height={20} rx={4} fill={color} />
       <text x={s.right + 6} y={y + 4} fill={ink} className="text-[11px] font-semibold tabular-nums">

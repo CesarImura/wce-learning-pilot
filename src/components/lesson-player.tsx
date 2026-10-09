@@ -18,6 +18,7 @@ import {
   X,
   XCircle,
 } from "lucide-react"
+import { TouchStage } from "@/components/exercises/touch-stage"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ExerciseKind, Lesson, Step } from "@/lib/lessons"
@@ -556,7 +557,9 @@ export function LessonPlayer({
             </p>
             <h1 className="text-[22px] leading-snug font-semibold tracking-[-0.01em] sm:text-[26px]">{step.prompt}</h1>
           </div>
-          <Exercise {...step.props} phase={feedback ? "review" : "answer"} onReady={onReady} />
+          <TouchStage>
+            <Exercise {...step.props} phase={feedback ? "review" : "answer"} onReady={onReady} />
+          </TouchStage>
         </div>
       </main>
 
