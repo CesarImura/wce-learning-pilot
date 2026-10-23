@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
-export type Feedback = { correct: boolean; title?: string; detail: string }
+/** `answer` is the right answer, shown when the learner gets it wrong; `visual` illustrates the reasoning in "Why?". */
+export type Feedback = { correct: boolean; title?: string; detail: string; answer?: string; visual?: ReactNode }
 
 export type Phase = "answer" | "review"
 
@@ -11,6 +12,49 @@ export type Phase = "answer" | "review"
 export type ExerciseProps = {
   phase: Phase
   onReady: (checker: (() => Feedback) | null) => void
+  /** Set in the review phase: tints the answer with the verdict. */
+  verdict?: "correct" | "wrong"
+  /** Opens the instructor's video moment for this step (concept screens). */
+  onWatch?: () => void
+  /** The step's prompt, for templates that lay out their own title (concept screens). */
+  title?: string
+  /** Prototype preview: fill in a right or wrong answer on mount (lesson player's Default / Wrong / Right switch). */
+  autoAnswer?: "correct" | "wrong"
+}
+
+/** Applies a scripted answer once, on mount, when the lesson player asks for a preview state. */
+export function useAutoAnswer(auto: ExerciseProps["autoAnswer"], apply: (verdict: "correct" | "wrong") => void) {
+  const applied = useRef(false)
+  useEffect(() => {
+    if (!auto || applied.current) return
+    applied.current = true
+    apply(auto)
+  }, [auto, apply])
+}
+
+/** Video thumbnail with the "Watch explanation" pill (lesson design, Figma 10581:24982). */
+export function WatchThumb({ onClick, className }: { onClick?: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Watch the instructor explain this"
+      className={cn(
+        "group relative block h-[154px] shrink-0 overflow-hidden rounded-[6px] border border-white/15 transition-[scale] duration-150 active:scale-[0.96]",
+        className,
+      )}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/wce/lesson/video-thumb.jpg" alt="" className="absolute inset-0 size-full object-cover" />
+      <span className="absolute inset-0 bg-black opacity-70 transition-opacity duration-150 group-hover:opacity-55" />
+      {/* Centered with inset + margin so the pill sizes to its content instead of the half-width left after `left: 50%`. */}
+      <span className="absolute inset-0 m-auto flex h-10 w-max items-center gap-3 rounded-[6px] border border-white/12 bg-white/24 py-2 pr-4 pl-3.5 whitespace-nowrap backdrop-blur-[2px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/wce/lesson/play.svg" alt="" width={17} height={16} className="translate-x-px" />
+        <span className="text-[16px] leading-6 text-white">Watch explanation</span>
+      </span>
+    </button>
+  )
 }
 
 /** Animates a candle count from `from` to `to` once `active` turns true. */
@@ -40,11 +84,11 @@ export function Stat({
   className?: string
 }) {
   return (
-    <div className={cn("rounded-lg border bg-card px-3 py-2", className)}>
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+    <div className={cn("flex flex-col gap-1 rounded-[8px] bg-white/10 px-3 py-2.5", className)}>
+      <div className="text-[12px] leading-4 text-[#9e9e9e]">{label}</div>
       <div
         className={cn(
-          "text-lg font-semibold tabular-nums",
+          "text-[18px] leading-6 font-semibold tabular-nums",
           tone === "up" && "text-up",
           tone === "down" && "text-down",
           tone === "muted" && "text-muted-foreground",

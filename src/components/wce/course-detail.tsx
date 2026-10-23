@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   BookOpen,
@@ -19,14 +20,15 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { FLAWLESS_BONUS, UNIT_BONUS, courseStats, lessonPoints, unitTest, type Course, type Unit } from "@/lib/courses"
-import { KIND_LABELS, type Lesson, type Step } from "@/lib/lessons"
+import type { Lesson } from "@/lib/lessons"
 import { courseProgress, fmtPoints, unitComplete, useProgress, type Progress } from "@/lib/progress"
 import { cn } from "@/lib/utils"
-import { LeagueCard } from "@/components/academy/league"
+import { OreArt } from "@/components/academy/league"
+import { syncLeagueWeek, useLeague } from "@/lib/engagement"
+import { LEAGUES, weekId, weeklyStatus } from "@/lib/league"
 import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
 import { topicOf } from "@/lib/courses"
-import { mentorOf } from "@/lib/mentors"
 
 const ICONS: Record<Lesson["icon"], LucideIcon> = {
   candle: CandlestickChart,
@@ -53,19 +55,22 @@ function LessonNode({
   state,
   index,
   result,
+  started,
 }: {
   course: Course
   lesson: Lesson
   state: "done" | "current" | "upcoming"
   index: number
   result?: Progress[string]
+  /** Whether any lesson of the course is done: the marker then says where you left off. */
+  started: boolean
 }) {
   const Icon = ICONS[lesson.icon]
   return (
-    <div className={cn("flex flex-col items-center gap-3", OFFSETS[index % OFFSETS.length])}>
+    <div data-current={state === "current" || undefined} className={cn("flex scroll-my-32 flex-col items-center gap-3", OFFSETS[index % OFFSETS.length])}>
       {state === "current" && (
-        <span className="relative animate-bounce rounded-[4px] bg-white px-2 py-1 text-[12px] font-semibold tracking-wide text-black uppercase">
-          Start
+        <span className="relative animate-bounce rounded-[6px] bg-white px-2.5 py-1 text-[13px] font-semibold text-black motion-reduce:animate-none">
+          {started ? "Continue here" : "Start here"}
           <span className="absolute -bottom-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-white" />
         </span>
       )}
@@ -86,7 +91,7 @@ function LessonNode({
         <p className={cn("text-[16px] font-medium", state === "upcoming" ? "text-white/70" : "text-white")}>
           {lesson.title}
         </p>
-        <p className="text-[12px] tracking-wide text-white/40 uppercase">
+        <p className="text-[13px] text-white/50 tabular-nums">
           {result
             ? `${result.points} / ${lessonPoints(lesson)} XP`
             : `${lesson.steps.length} steps · ${lessonPoints(lesson)} XP`}
@@ -123,7 +128,7 @@ function UnitTestNode({ course, unit, progress }: { course: Course; unit: Unit; 
   return (
     <div className="flex w-full flex-col items-center gap-3 border-t border-dashed border-white/10 pt-10">
       {state === "ready" && (
-        <span className="relative animate-bounce rounded-[4px] bg-gold px-2 py-1 text-[12px] font-semibold tracking-wide text-black uppercase">
+        <span className="relative animate-bounce rounded-[6px] bg-gold px-2.5 py-1 text-[13px] font-semibold text-black motion-reduce:animate-none">
           +{UNIT_BONUS} XP bonus
           <span className="absolute -bottom-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-gold" />
         </span>
@@ -141,7 +146,7 @@ function UnitTestNode({ course, unit, progress }: { course: Course; unit: Unit; 
         <p className={cn("text-[16px] font-medium", state === "locked" ? "text-white/50" : "text-gold")}>
           {state === "mastered" ? "Unit mastered" : "Unit test"}
         </p>
-        <p className="text-[12px] tracking-wide text-white/40 uppercase">
+        <p className="text-[13px] text-white/50">
           {state === "mastered"
             ? `${result.points} XP earned · tap to retake`
             : state === "ready"
@@ -157,94 +162,128 @@ export function CourseDetail({ course }: { course: Course }) {
   const progress = useProgress()
   const stats = courseStats(course)
   const prog = courseProgress(course, progress)
-  const practice = new Map<string, Step>()
-  for (const st of course.units.flatMap((u) => u.lessons.flatMap((l) => l.steps)))
-    if (st.mode === "exercise" && !practice.has(st.kind)) practice.set(st.kind, st)
   const results = Object.entries(progress).filter(([k]) => k.startsWith(`${course.id}/`))
   const accuracy = results.length ? Math.round(results.reduce((n, [, r]) => n + r.accuracy, 0) / results.length) : null
   const ctaHref = prog.next
     ? `/courses/${course.id}/${prog.next.id}`
     : `/courses/${course.id}/${course.units[0].lessons[0].id}`
 
-  return (
-    <>
-      {/* Compact course header */}
-      <section className="mx-auto max-w-[1440px] px-4 pt-6 pb-8 lg:px-10">
-        <nav className="mb-5 flex items-center gap-1.5 text-[14px] whitespace-nowrap text-white/50">
-          <Link href="/courses" className="shrink-0 hover:text-white">
-            Academy
-          </Link>
-          <ChevronRight className="size-4" />
-          <span className="truncate text-white/80">{course.title}</span>
-        </nav>
-        <div className="glass grid gap-0 overflow-hidden md:grid-cols-[280px_1fr]">
-          <div
-            className="relative grid place-items-center py-8"
-            style={{ backgroundImage: `radial-gradient(circle at 50% 50%, ${topicOf(course).color}26, transparent 65%)` }}
-          >
-            <TopicCoin topicId={course.topic} size={196} float className="max-sm:size-[140px]!" />
-          </div>
-          <div className="flex flex-col gap-4 p-5">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2 text-[13px] text-white/55">
-                <span className="font-medium tracking-[0.12em] uppercase" style={{ color: topicOf(course).color }}>
-                  {topicOf(course).name}
-                </span>
-                {course.isNew && <NewTag className="px-1 py-0.5 text-[11px]" />}
-                <span>· {course.level}</span>
-              </div>
-              <h1 className="text-[28px] leading-tight font-medium">{course.title}</h1>
-              <p className="max-w-3xl text-[15px] text-white/65">{course.description}</p>
-              {mentorOf(course.mentor) && <MentorByline name={course.mentor!} />}
-            </div>
-            <div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Link
-                href={ctaHref}
-                className="flex h-[38px] items-center gap-1.5 rounded-[5px] bg-white px-4 text-[14px] font-semibold tracking-[-0.02em] text-black hover:bg-white/85"
-              >
-                {prog.next ? <Play className="size-4 fill-black" /> : <RotateCcw className="size-4" />}
-                {prog.done === 0 ? "Start first lesson" : prog.next ? `Continue: ${prog.next.title}` : "Review course"}
-              </Link>
-              <div className="flex flex-wrap items-center gap-5 text-[14px] whitespace-nowrap text-white/60">
-                <span className="flex items-center gap-1.5">
-                  <BookOpen className="size-4" /> {stats.lessons} lessons
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="size-4" /> {stats.exercises} exercises
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Trophy className="size-4" /> {course.units.length} unit tests
-                </span>
-                <span className="hidden items-center gap-1.5 sm:flex">
-                  <Clock className="size-4" /> ~{stats.minutes} min
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+  // Open on where you left off: on desktop the header stays put in the rail, so bring the current lesson into view.
+  const path = useRef<HTMLDivElement>(null)
+  const ready = Object.keys(progress).length > 0
+  useEffect(() => {
+    if (!window.matchMedia("(min-width: 1024px)").matches) return
+    const here = path.current?.querySelector<HTMLElement>("[data-current]")
+    if (!here) return
+    const r = here.getBoundingClientRect()
+    if (r.top > 0 && r.bottom < window.innerHeight) return
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    here.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" })
+  }, [ready])
 
-      <div className="mx-auto grid max-w-[1440px] gap-6 px-4 pb-24 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-10">
+  return (
+    <div className="mx-auto max-w-[1440px] px-4 pt-6 pb-24 lg:px-10">
+      <nav className="mb-5 flex items-center gap-1.5 text-[14px] whitespace-nowrap text-white/50">
+        <Link href="/courses" className="shrink-0 hover:text-white">
+          Training
+        </Link>
+        <ChevronRight className="size-4" />
+        <span className="truncate text-white/80">{course.title}</span>
+      </nav>
+
+      {/* The course and where you stand in it live in a rail that stays put on desktop; the path scrolls beside it. */}
+      <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
+        <aside className="glass flex flex-col overflow-hidden lg:sticky lg:top-[70px] lg:max-h-[calc(100dvh-90px)] lg:overflow-y-auto lg:[scrollbar-width:none]">
+          <div className="flex flex-col gap-5 p-5">
+            <div className="flex items-center gap-4">
+              <div
+                className="grid size-[104px] shrink-0 place-items-center rounded-full"
+                style={{ backgroundImage: `radial-gradient(circle at 50% 50%, ${topicOf(course).color}33, transparent 70%)` }}
+              >
+                <TopicCoin topicId={course.topic} size={96} float />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/55">
+                  <span className="font-medium" style={{ color: topicOf(course).color }}>
+                    {topicOf(course).name}
+                  </span>
+                  {course.isNew && <NewTag className="px-1 py-0.5 text-[11px]" />}
+                  <span>· {course.level}</span>
+                </div>
+                <h1 className="text-[24px] leading-tight font-medium text-balance">{course.title}</h1>
+              </div>
+            </div>
+            <p className="text-[15px] text-pretty text-white/65">{course.tagline}</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[14px] whitespace-nowrap text-white/60">
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="size-4" /> {stats.lessons} lessons
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="size-4" /> {stats.exercises} exercises
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Trophy className="size-4" /> {course.units.length} unit tests
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="size-4" /> ~{stats.minutes} min
+              </span>
+            </div>
+            <Link
+              href={ctaHref}
+              className="flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-[6px] bg-white px-4 text-[14px] font-semibold tracking-[-0.02em] text-black hover:bg-white/85"
+            >
+              {prog.next ? <Play className="size-4 shrink-0 fill-black" /> : <RotateCcw className="size-4 shrink-0" />}
+              <span className="truncate">{prog.done === 0 ? "Start first lesson" : prog.next ? `Continue: ${prog.next.title}` : "Review course"}</span>
+            </Link>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-white/10 p-5">
+            <p className="text-[13px] text-white/55">Your progress</p>
+            <div className="flex items-center gap-2">
+              <Zap className="size-6 fill-[#f5c451] text-[#f5c451]" />
+              <p className="text-[24px] leading-7 font-medium tabular-nums">
+                {fmtPoints(prog.points)} <span className="text-[15px] text-white/50">/ {stats.points} XP</span>
+              </p>
+            </div>
+            <ProgressBar pct={prog.pct} />
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { v: `${prog.done}/${prog.total}`, l: "Lessons" },
+                { v: `${prog.pct}%`, l: "Complete" },
+                { v: accuracy === null ? "–" : `${accuracy}%`, l: "Accuracy" },
+                { v: `${prog.testsPassed}/${course.units.length}`, l: "Units", gold: true },
+              ].map((x) => (
+                <div key={x.l}>
+                  <p className={cn("text-[18px] leading-6 font-medium tabular-nums", x.gold && "text-gold")}>{x.v}</p>
+                  <p className="text-[12px] text-white/45">{x.l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <CourseLeague />
+        </aside>
+
         {/* Units + lesson path */}
-        <div className="space-y-6">
+        <div ref={path} className="space-y-6">
           {course.units.map((unit, u) => {
             const done = unit.lessons.filter((l) => progress[`${course.id}/${l.id}`]).length
+            const mastered = !!progress[`${course.id}/${unitTest(unit).id}`]
             return (
               <section key={unit.id} className="glass overflow-hidden">
                 <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 p-4 sm:p-5">
                   <div>
-                    <p className="eyebrow">Unit {u + 1}</p>
+                    <p className="text-[13px] text-white/50">Unit {u + 1}</p>
                     <h2 className="mt-0.5 text-[20px] font-semibold">{unit.title}</h2>
                     <p className="text-[14px] text-white/60">{unit.description}</p>
                   </div>
-                  <div className="w-40 space-y-1.5">
-                    <p className="flex items-center justify-end gap-2 text-right text-[12px] text-white/50 tabular-nums uppercase">
-                      {progress[`${course.id}/${unitTest(unit).id}`] && (
+                  <div className="w-44 space-y-1.5">
+                    <p className="flex items-center justify-end gap-1.5 text-right text-[13px] whitespace-nowrap text-white/55 tabular-nums">
+                      {mastered && (
                         <span className="flex items-center gap-1 text-gold">
                           <Trophy className="size-3.5" /> Mastered ·
                         </span>
                       )}
-                      {done} / {unit.lessons.length} lessons
+                      {done} of {unit.lessons.length} lessons
                     </p>
                     <ProgressBar pct={(done / unit.lessons.length) * 100} />
                   </div>
@@ -261,6 +300,7 @@ export function CourseDetail({ course }: { course: Course }) {
                         state={state}
                         index={i}
                         result={result}
+                        started={prog.done > 0}
                       />
                     )
                   })}
@@ -270,82 +310,36 @@ export function CourseDetail({ course }: { course: Course }) {
             )
           })}
         </div>
-
-        {/* Side panels */}
-        <aside className="space-y-6 lg:sticky lg:top-[110px] lg:self-start">
-          <section className="glass space-y-4 p-4">
-            <p className="eyebrow">Your progress</p>
-            <div className="flex items-center gap-3">
-              <Zap className="size-7 fill-[#f5c451] text-[#f5c451]" />
-              <p className="text-[26px] font-medium tabular-nums">
-                {fmtPoints(prog.points)}{" "}
-                <span className="text-[16px] text-white/50">/ {stats.points} XP</span>
-              </p>
-            </div>
-            <ProgressBar pct={prog.pct} />
-            <div className="grid grid-cols-3 text-center">
-              {[
-                { v: `${prog.done}/${prog.total}`, l: "Lessons" },
-                { v: `${prog.pct}%`, l: "Complete" },
-                { v: accuracy === null ? "–" : `${accuracy}%`, l: "Accuracy" },
-              ].map((s) => (
-                <div key={s.l}>
-                  <p className="text-[24px] font-medium tabular-nums">{s.v}</p>
-                  <p className="text-[12px] text-white/40 uppercase">{s.l}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-gold/20 bg-gold/[0.06] px-3 py-2 text-[14px]">
-              <span className="flex items-center gap-2 text-gold">
-                <Trophy className="size-4" /> Unit tests passed
-              </span>
-              <span className="font-semibold text-white tabular-nums">
-                {prog.testsPassed} / {course.units.length}
-              </span>
-            </div>
-          </section>
-
-          <LeagueCard />
-
-          <section className="glass p-4">
-            <p className="eyebrow mb-3">What you&apos;ll practice</p>
-            <div className="flex flex-wrap gap-1.5">
-              {[...practice.keys()].map((k) => (
-                <Link
-                  key={k}
-                  href={`/courses/lab/${k}`}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[13px] text-white/70 hover:border-brand/40 hover:text-white"
-                >
-                  {KIND_LABELS[k as keyof typeof KIND_LABELS]}
-                </Link>
-              ))}
-            </div>
-          </section>
-        </aside>
       </div>
-    </>
+    </div>
   )
 }
 
-function MentorByline({ name }: { name: string }) {
-  const m = mentorOf(name)!
+/** Your league, in a line: lives in the course header next to your progress. */
+function CourseLeague() {
+  const s = useLeague()
+  useEffect(() => syncLeagueWeek(), [])
+  if (!s.now) return <div className="h-[76px] border-t border-white/10" />
+  const league = LEAGUES[s.league]
+  const { me, toPromotion, canPromote } = weeklyStatus(s.league, weekId(s.now), s.weekXp, s.now)
   return (
-    <div className="flex items-center gap-2.5 pt-1">
-      {m.photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={m.photo} alt="" className="size-8 rounded-full border border-white/15 object-cover" />
-      ) : (
-        <span className="grid size-8 place-items-center rounded-full bg-white/10 text-[12px] font-semibold text-white/70">
-          {m.name
-            .split(" ")
-            .map((w) => w[0])
-            .join("")}
-        </span>
-      )}
-      <span className="text-[14px] leading-tight">
-        <span className="text-white/85">{m.name}</span>
-        <span className="block text-[12px] text-white/45">{m.title}</span>
-      </span>
-    </div>
+    <Link href="/league" className="group mt-auto flex items-center gap-3 border-t border-white/10 px-5 py-4 transition-colors hover:bg-white/[0.03]">
+      <div className="w-11 shrink-0">
+        <OreArt ore={league.ore} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-medium">{league.name}</p>
+        <p
+          className={cn(
+            "text-[13px]",
+            me.zone === "promote" ? "text-up" : me.zone === "demote" ? "text-down" : "text-white/55",
+          )}
+        >
+          #{me.rank} · {s.weekXp} XP this week ·{" "}
+          {me.zone === "promote" ? "promotion zone" : me.zone === "demote" ? "demotion zone" : canPromote ? `${toPromotion} XP to move up` : "top league"}
+        </p>
+      </div>
+      <ChevronRight className="size-4 text-white/40 transition-transform group-hover:translate-x-0.5" />
+    </Link>
   )
 }

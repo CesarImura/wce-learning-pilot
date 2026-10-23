@@ -29,6 +29,8 @@ export type Course = {
 }
 
 export const POINTS_PER_CORRECT = 10
+/** A right answer after "Start over", on the second try or in "Practice your mistakes": still worth something. */
+export const POINTS_PER_RETRY = 5
 
 // Unit tests: the last node of every unit. Pass (finish with hearts left) for bonus points.
 export const TEST_HEARTS = 3

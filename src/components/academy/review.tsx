@@ -66,7 +66,7 @@ export function ReviewPanel({
         const target = lessons.find((l) => l.id === id) ?? lesson
         const at = Math.min(...items.map((m) => m.step.at ?? Infinity))
         return (
-          <div key={id} className="glass flex flex-wrap items-center gap-3 p-3">
+          <div key={id} className="glass flex flex-wrap items-center gap-3 rounded-[8px] p-3">
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-medium">{target.title}</p>
               <p className="text-[13px] text-white/55">
@@ -101,7 +101,7 @@ export function ReviewPanel({
 }
 
 /** Stand-in for the Student Area player: shows exactly which video moment would open. */
-function VideoSheet({ courseId, lesson, at, onClose }: { courseId: string; lesson: Lesson; at: number; onClose: () => void }) {
+export function VideoSheet({ courseId, lesson, at, onClose }: { courseId: string; lesson: Lesson; at: number; onClose: () => void }) {
   const course = getCourse(courseId)!
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center" onClick={onClose}>

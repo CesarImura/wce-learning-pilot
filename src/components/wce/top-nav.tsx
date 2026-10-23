@@ -4,9 +4,10 @@ import type { ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, BookOpen, ChevronDown, Coins, FlaskConical, Lock, Search, Trophy } from "lucide-react"
+import { Bell, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Coins, FlaskConical, Lock, Search, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BASE_POINTS, fmtPoints } from "@/lib/progress"
+import { HomeLayoutSwitch, useHomeLayout } from "@/components/prototype-panel"
 
 // Mirrors the platform's top bar (Figma "Sidebar" component). Only Student Area
 // is built in this prototype; the other tabs are inert placeholders.
@@ -14,7 +15,7 @@ const TABS: { label: string; href?: string; match?: (p: string) => boolean; lock
   { label: "Dashboard" },
   { label: "Student Area" },
   {
-    label: "Academy",
+    label: "Training",
     href: "/courses",
     match: (p) => p === "/" || ["/courses", "/league", "/collection", "/lab"].some((x) => p.startsWith(x)),
   },
@@ -128,7 +129,7 @@ function AcademyNav() {
   return (
     <div className="hidden border-b border-white/10 bg-black/40 backdrop-blur md:block">
       <div className="mx-auto flex h-12 max-w-[1440px] items-center gap-6 px-4 lg:px-10">
-        <span className="font-serif text-[18px] text-white/90 italic">Academy</span>
+        <span className="font-serif text-[18px] text-white/90 italic">Training</span>
         <nav className="flex h-full items-center gap-1">
           {ACADEMY_TABS.map((t) => {
             const active = t.match(pathname)
@@ -179,8 +180,35 @@ function AcademyTabBar() {
   )
 }
 
+// v2: inner pages hang off the Training home, so they get a way back instead of section tabs.
+const CRUMBS: Record<string, { label: string; wide?: boolean }> = {
+  "/courses/all": { label: "All courses" },
+  "/league": { label: "League", wide: true },
+  "/collection": { label: "Coin collection" },
+  "/lab": { label: "Exercise lab" },
+}
+
+function TrainingCrumb() {
+  const crumb = CRUMBS[usePathname()]
+  if (!crumb) return null
+  return (
+    // Same container as the page below it, so the crumb lines up with the title (the league page is wider).
+    <div className={cn("mx-auto px-4 pt-5 lg:px-10", crumb.wide ? "max-w-[1680px]" : "max-w-[1440px]")}>
+      <nav className="flex items-center gap-1.5 text-[14px] text-white/50">
+        <Link href="/courses" className="-ml-1 flex items-center gap-1 rounded-[4px] px-1 py-0.5 transition-colors hover:text-white">
+          <ChevronLeft className="size-4" />
+          Training
+        </Link>
+        <ChevronRight className="size-4 text-white/30" />
+        <span className="text-white/80">{crumb.label}</span>
+      </nav>
+    </div>
+  )
+}
+
 /** Page background: black canvas with the blurred navy glow behind the header. */
 export function PageShell({ children }: { children: ReactNode }) {
+  const hub = useHomeLayout() === "v2"
   return (
     <div className="relative min-h-dvh overflow-x-clip bg-black">
       <div
@@ -189,9 +217,10 @@ export function PageShell({ children }: { children: ReactNode }) {
         style={{ backgroundImage: "linear-gradient(180deg, rgb(12,30,41) 13%, rgb(49,76,94) 120%)" }}
       />
       <TopNav />
-      <AcademyNav />
-      <div className="relative pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
-      <AcademyTabBar />
+      {hub ? <TrainingCrumb /> : <AcademyNav />}
+      <div className={cn("relative", !hub && "pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0")}>{children}</div>
+      {!hub && <AcademyTabBar />}
+      <HomeLayoutSwitch />
     </div>
   )
 }

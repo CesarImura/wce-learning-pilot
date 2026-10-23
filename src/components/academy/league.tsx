@@ -181,7 +181,7 @@ export function LeagueTile({
           ))}
         {state === "achieved" &&
           [
-            index === 0 ? "Join the Academy" : `Reach ${league.name}`,
+            index === 0 ? "Start Training" : `Reach ${league.name}`,
             ...(promotedRank ? [`Finish #${promotedRank} to move up`] : []),
           ].map((q) => (
             <p key={q} className="flex items-center gap-2 text-[16px] text-white/60 line-through decoration-white/50">

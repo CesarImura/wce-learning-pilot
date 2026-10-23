@@ -54,7 +54,7 @@ function CoinCard({ topic, progress }: { topic: Topic; progress: Progress }) {
         </ul>
         {locked ? (
           <p className="flex items-center gap-1.5 pt-1 text-[13px] text-white/45 sm:justify-center">
-            <Lock className="size-3.5" /> Courses coming to the Academy
+            <Lock className="size-3.5" /> Courses coming to Training
           </p>
         ) : (
           next && (

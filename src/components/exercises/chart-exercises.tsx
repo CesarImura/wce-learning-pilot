@@ -14,35 +14,40 @@ import {
   sma,
   supportScenario,
   trendingSeries,
+  type Candle,
 } from "@/lib/market"
 import { cn } from "@/lib/utils"
-import { ChartFrame, Stat, sliderValue, useReveal, type ExerciseProps } from "./shared"
+import { ChartFrame, Stat, sliderValue, useAutoAnswer, useReveal, type ExerciseProps } from "./shared"
 
 // ---------------------------------------------------------------------------
 // Tap the chart
 
-export function TapEngulfing({ phase, onReady }: ExerciseProps) {
+export function TapEngulfing({ phase, onReady, autoAnswer }: ExerciseProps) {
   const { candles, target } = useMemo(() => engulfingScenario(), [])
   const [picked, setPicked] = useState<number | null>(null)
+  useAutoAnswer(autoAnswer, (v) => setPicked(v === "correct" ? target : target - 4))
   const review = phase === "review"
   const visible = target + 5
 
   useEffect(() => {
     if (picked === null) return onReady(null)
+    const visual = <EngulfingWhy candles={candles} target={target} />
     onReady(() =>
       picked === target
         ? {
             correct: true,
             detail: "The green body completely swallows the previous red body, right at the end of a downtrend.",
+            visual,
           }
         : Math.abs(picked - target) === 1
-          ? { correct: false, detail: "So close! The engulfing candle is the big green one that wraps the small red one." }
+          ? { correct: false, detail: "So close! The engulfing candle is the big green one that wraps the small red one.", visual }
           : {
               correct: false,
               detail: "Look for a small red candle followed by a green candle whose body covers it completely.",
+              visual,
             },
     )
-  }, [picked, target, onReady])
+  }, [picked, target, candles, onReady])
 
   const highlight: Record<number, "correct" | "wrong" | "selected"> = {}
   if (picked !== null) highlight[picked] = review ? (picked === target ? "correct" : "wrong") : "selected"
@@ -61,6 +66,104 @@ export function TapEngulfing({ phase, onReady }: ExerciseProps) {
         <Hand className="size-4" /> Tap a candle to select it.
       </p>
     </div>
+  )
+}
+
+/**
+ * "Why?" figure for the engulfing, drawn as a zoom: the downtrend on the left with the last two
+ * candles boxed, and those two blown up on the right, the red body's range carried across so you
+ * see the green body cover it. Numbers tie the figure to the three-step legend.
+ */
+function EngulfingWhy({ candles, target }: { candles: Candle[]; target: number }) {
+  const lead = candles.slice(target - 9, target + 1)
+  const red = candles[target - 1]
+  const green = candles[target]
+  const H = 200
+  const scale = (cs: Candle[], top: number, bottom: number) => {
+    const hi = Math.max(...cs.map((c) => c.h))
+    const lo = Math.min(...cs.map((c) => c.l))
+    return (v: number) => top + ((hi - v) / (hi - lo)) * (bottom - top)
+  }
+  const ly = scale(lead, 44, H - 16)
+  const zy = scale([red, green], 36, H - 20)
+  const lx = (i: number) => 16 + i * 22
+  const redX = 345
+  const greenX = 395
+  const candle = (c: Candle, x: number, w: number, y: (v: number) => number, className: string) => (
+    <g key={x} className={className}>
+      <line x1={x} x2={x} y1={y(c.h)} y2={y(c.l)} strokeWidth={1.5} className="stroke-current" />
+      <rect x={x - w / 2} y={y(Math.max(c.o, c.c))} width={w} height={Math.max(2, Math.abs(y(c.o) - y(c.c)))} rx={1.5} className="fill-current" />
+    </g>
+  )
+  const marker = (n: number, x: number, y: number, on = false) => (
+    <g>
+      <circle cx={x} cy={y} r={10} className={on ? "fill-up" : "fill-[#2e2e2e]"} />
+      <text x={x} y={y + 4.5} textAnchor="middle" className={cn("text-[12px] font-semibold", on ? "fill-black" : "fill-white")}>
+        {n}
+      </text>
+    </g>
+  )
+  // The boxed pair on the left, and the zoom panel it opens into.
+  const box = { x: lx(8) - 9, y: Math.min(ly(red.h), ly(green.h)) - 6, w: lx(9) - lx(8) + 18 }
+  box.w = Math.max(box.w, 18)
+  const boxBottom = Math.max(ly(red.l), ly(green.l)) + 6
+  const zoom = { x: 290, y: 8, w: 226, h: H - 16 }
+  const steps = ["Price is falling", "Small red candle", "Green body covers it"]
+  return (
+    <figure className="flex flex-col gap-4 rounded-[8px] border border-white/10 bg-[#0c0c0c] p-4">
+      <svg viewBox={`0 0 520 ${H}`} className="w-full" role="img" aria-label="A downtrend ending in a small red candle and a green candle whose body covers the red body">
+        {lead.map((c, i) => candle(c, lx(i), 10, ly, cn(c.c >= c.o ? "text-up" : "text-down", i < 8 ? "opacity-40" : "opacity-90")))}
+        {marker(1, lx(0) + 4, ly(lead[0].h) - 24)}
+
+        {/* Lines from the boxed pair to the zoom panel. */}
+        <path
+          d={`M${box.x + box.w} ${box.y} L${zoom.x} ${zoom.y} M${box.x + box.w} ${boxBottom} L${zoom.x} ${zoom.y + zoom.h}`}
+          strokeDasharray="3 4"
+          className="stroke-white/20"
+        />
+        <rect x={box.x} y={box.y} width={box.w} height={boxBottom - box.y} rx={3} fill="none" className="stroke-white/50" />
+        <rect x={zoom.x} y={zoom.y} width={zoom.w} height={zoom.h} rx={8} className="fill-white/[0.03] stroke-white/15" />
+
+        {/* The red body's range, carried across the green candle. */}
+        <rect
+          x={redX - 22}
+          y={zy(red.o)}
+          width={greenX - redX + 38}
+          height={zy(red.c) - zy(red.o)}
+          strokeDasharray="3 3"
+          className="fill-down/10 stroke-down/60"
+        />
+        {candle(red, redX, 22, zy, "text-down")}
+        {candle(green, greenX, 22, zy, "text-up")}
+        <path d={`M${greenX + 19} ${zy(green.c)} h5 V${zy(green.o)} h-5`} fill="none" strokeWidth={1.5} className="stroke-up" />
+        <text x={greenX + 32} y={zy(green.c) + 12} className="fill-white text-[13px]">
+          Green
+        </text>
+        <text x={greenX + 32} y={zy(green.c) + 28} className="fill-white text-[13px]">
+          body
+        </text>
+        <text x={greenX + 32} y={(zy(red.o) + zy(red.c)) / 2 + 4.5} className="fill-white/60 text-[13px]">
+          Red body
+        </text>
+        {marker(2, redX, zy(red.h) - 22)}
+        {marker(3, greenX, zy(green.h) - 18, true)}
+      </svg>
+      <ol className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:gap-4">
+        {steps.map((s, i) => (
+          <li key={s} className="flex items-start gap-2 text-[14px] leading-5 text-white/80">
+            <span
+              className={cn(
+                "grid size-5 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
+                i === 2 ? "bg-up text-black" : "bg-[#2e2e2e] text-white",
+              )}
+            >
+              {i + 1}
+            </span>
+            {s}
+          </li>
+        ))}
+      </ol>
+    </figure>
   )
 }
 

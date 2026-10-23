@@ -48,6 +48,13 @@ export type Step = {
   source?: string
   /** Second in the lesson's video where this concept is taught. */
   at?: number
+  /** "Need a hint?": a nudge, plus where to read more outside the Academy. */
+  help?: StepHelp
+}
+
+export type StepHelp = {
+  hint?: string
+  links?: { label: string; source: string; url: string }[]
 }
 
 export type Lesson = {

@@ -3,7 +3,7 @@
 
 import type { ClassifyProps, ConceptProps, DirectionsProps, NumberProps, OrderProps } from "@/components/exercises/templates"
 import type { Course } from "../courses"
-import { STEPS, type Step, type TemplateKind } from "../lessons"
+import { STEPS, type Step, type StepHelp, type TemplateKind } from "../lessons"
 
 const ANDREA = { name: "Andrea Cimitan", photo: "/wce/mentors/andrea-cimitan.jpg" }
 
@@ -348,6 +348,17 @@ export const beginnerSeries: Course = {
               explain: "Finance starts with saving and investing. Speculation, where retail traders start, is the riskiest step.",
             }),
             widget("returns-reality", "Reality check", "How much can even the best in the world make?"),
+            concept("Win rate and reward-to-risk trade off", {
+              body: [
+                "Every strategy has two numbers: how much it makes when it wins compared with what it risks (reward-to-risk, or R), and how often it wins (win rate).",
+                "The further your take profit, the bigger each win, but the less often price gets there. So you need a lower win rate to break even, and you'll also win less often.",
+              ],
+              points: [
+                { title: "Break-even win rate", text: "1 ÷ (1 + R). At 1:1 that's 50%, at 1:2 it's 33%, at 1:3 it's 25%." },
+                { title: "Above the line", text: "Win more often than break-even and the profit factor goes above 1." },
+                { title: "Profit factor", text: "Add up every win, add up every loss, divide wins by losses." },
+              ],
+            }),
             widget("breakeven-curve", "Explore", "Place a 1:2 strategy exactly on the break-even line"),
             number("Andrea's 10 trades, each risking 1 to make 2", {
               question: "Winners pay +2, losers −1. What's the profit factor (total wins ÷ total losses)?",
@@ -358,6 +369,24 @@ export const beginnerSeries: Course = {
               answer: 2,
               correct: "5 wins × 2 = 10, 5 losses × 1 = 5, so 10 ÷ 5 = 2. Profitable while winning only half the time.",
               hint: "Add up all the wins (5 × 2), add up all the losses (5 × 1), then divide wins by losses.",
+            }),
+            concept("Three ways to trade", {
+              quote: "Start with a documented edge and clear rules, then build your screen time.",
+              body: ["Once you know what an edge looks like, there are three ways to trade it. Each has its own strength and its own trap."],
+              points: [
+                {
+                  title: "Algorithmic",
+                  text: "A coded bot follows the rules with no emotions. The trap is overfitting: tuning it so hard on past data that it fails on new data.",
+                },
+                {
+                  title: "Discretionary",
+                  text: "You trade by hand and your read of the market is the edge. The hardest path: few succeed, but the winners win big.",
+                },
+                {
+                  title: "Hybrid",
+                  text: "Rules researched and documented like an algo, but you place the trades. Andrea's recommended place to start.",
+                },
+              ],
             }),
             classify("Algo, discretionary or hybrid?", {
               buckets: [
@@ -398,6 +427,17 @@ export const beginnerSeries: Course = {
                 { title: "Journal & risk manager", text: "Track your metrics, protect your account." },
               ],
             }),
+            concept("Pick a style that fits your time", {
+              body: [
+                "Your style has to fit your week, not the other way around. If your time depends on someone else, like a boss or your own business, pick a style that doesn't need you at the screen at fixed hours.",
+                "Andrea's advice is to go step by step: build cash flow and save, invest passively, trade part-time, and only go full-time once you see real signs of success.",
+              ],
+              points: [
+                { title: "Investing and swing trading", text: "A few hours a week or less. Fits a job or a business." },
+                { title: "Day trading and scalping", text: "3–4 hours a day, often at the New York open. Fits someone who controls their hours." },
+                { title: "Running algos seriously", text: "Also hours every day: research, testing and monitoring." },
+              ],
+            }),
             classify("How much time does each style need?", {
               buckets: [
                 { id: "low", label: "A few hours a week or less" },
@@ -425,7 +465,25 @@ export const beginnerSeries: Course = {
               explain:
                 "Go gradually: cash flow first, then passive investing, then part-time trading. Going all-in without capital, knowledge or a strategy is a recipe for disaster.",
             }),
+            concept("How a prop firm pays you", {
+              body: [
+                "A prop firm lends you its capital. You pay a fee for a challenge, and if you hit its profit target without breaking its risk rules, you trade a funded account.",
+                "You keep a share of the profits, called the split. Most people who buy a challenge fail, and their fees pay for the few who get paid.",
+              ],
+              points: [
+                { title: "Profit", text: "Account size × your return. $100,000 × 5% = $5,000." },
+                { title: "Your payout", text: "Profit × your split. $5,000 × 80% = $4,000." },
+              ],
+            }),
             widget("prop-firm", "Simulate", "How a prop-firm challenge pays out"),
+            concept("The tools of the trade", {
+              body: ["Besides a broker or prop firm, you need a trading terminal. Andrea uses a different one for each style."],
+              points: [
+                { title: "DeepCharts", text: "Order flow on futures. Built for day trading and scalping." },
+                { title: "TradingView", text: "Easy, clean charting. Good for swing trading and macro." },
+                { title: "MultiCharts", text: "Backtesting and automation. Built for algo trading." },
+              ],
+            }),
             classify("Match the platform to the trading style", {
               buckets: [
                 { id: "day", label: "Day trading & scalping", hint: "Order flow, futures" },
@@ -1040,3 +1098,182 @@ for (const unit of beginnerSeries.units)
   }
 for (const [steps, sources] of TEST_SOURCES)
   steps.forEach((st, i) => Object.assign(st, { source: sources[i][0], at: sources[i][1] }))
+
+// "Need a hint?" for every unit test: a nudge plus outside reading (links checked 2026-10-22).
+const link = (label: string, source: string, url: string) => ({ label, source, url })
+const HELP_PROFESSION: StepHelp[] = [
+  {
+    hint: "Break-even win rate = 1 ÷ (1 + R), where R is what you make for every 1 you risk. Here R = 3.",
+    links: [link("Understanding the risk/reward ratio", "Investopedia", "https://www.investopedia.com/terms/r/riskrewardratio.asp")],
+  },
+  {
+    hint: "Profit factor = total won ÷ total lost. Add up the six +1s, add up the four −1s, then divide.",
+    links: [
+      link("Interpreting a strategy performance report (profit factor)", "Investopedia", "https://www.investopedia.com/articles/fundamental-analysis/10/strategy-performance-reports.asp"),
+    ],
+  },
+  {
+    hint: "A target further away is reached less often. And a strategy tuned too tightly to old data learns its noise, not its edge.",
+    links: [
+      link("Take-profit orders", "Investopedia", "https://www.investopedia.com/terms/t/take-profitorder.asp"),
+      link("Overfitting", "Investopedia", "https://www.investopedia.com/terms/o/overfitting.asp"),
+    ],
+  },
+  {
+    hint: "Ask who controls each person's hours. If someone else does, they need a style that doesn't need them at the screen at fixed times.",
+    links: [
+      link("Swing trading", "Investopedia", "https://www.investopedia.com/terms/s/swingtrading.asp"),
+      link("Day trading basics", "Investopedia", "https://www.investopedia.com/terms/d/daytrader.asp"),
+    ],
+  },
+  {
+    hint: "Profit = account × return. Your payout = profit × your split.",
+    links: [
+      link("Proprietary trading", "Investopedia", "https://www.investopedia.com/terms/p/proprietarytrading.asp"),
+      link("Proprietary trading", "Wikipedia", "https://en.wikipedia.org/wiki/Proprietary_trading"),
+    ],
+  },
+  {
+    hint: "Compare a yearly percentage for each: the stock market's long-run average, the best-known value investor, and the record-holding quant fund.",
+    links: [
+      link("S&P 500 average returns and historical performance", "Investopedia", "https://www.investopedia.com/ask/answers/042415/what-average-annual-return-sp-500.asp"),
+      link("Renaissance Technologies (Jim Simons' firm)", "Wikipedia", "https://en.wikipedia.org/wiki/Renaissance_Technologies"),
+    ],
+  },
+]
+
+const HELP_MARKETS: StepHelp[] = [
+  {
+    hint: "The bid is what buyers are willing to pay, the ask is what sellers want. A buyer waiting below the price joins the buyers.",
+    links: [
+      link("Bid and ask", "Investopedia", "https://www.investopedia.com/terms/b/bid-and-ask.asp"),
+      link("Order book", "Investopedia", "https://www.investopedia.com/terms/o/order-book.asp"),
+    ],
+  },
+  {
+    hint: "A market order takes whatever is resting on the other side, one price level at a time. In a crash, money runs toward the safest assets. A safer issuer can pay less to borrow.",
+    links: [
+      link("Market orders", "Investopedia", "https://www.investopedia.com/terms/m/marketorder.asp"),
+      link("Flight to quality", "Investopedia", "https://www.investopedia.com/terms/f/flighttoquality.asp"),
+      link("Credit ratings", "Investopedia", "https://www.investopedia.com/terms/c/creditrating.asp"),
+    ],
+  },
+  {
+    hint: "Only the profit that isn't reinvested is paid out. Your dividend is your ownership share of that payout.",
+    links: [
+      link("Dividends", "Investopedia", "https://www.investopedia.com/terms/d/dividend.asp"),
+      link("Payout ratio", "Investopedia", "https://www.investopedia.com/terms/p/payoutratio.asp"),
+    ],
+  },
+  {
+    hint: "Lending for longer is riskier, so you're normally paid more for it. When the market expects hikes, short-term yields jump first.",
+    links: [
+      link("Yield curve", "Investopedia", "https://www.investopedia.com/terms/y/yieldcurve.asp"),
+      link("Inverted yield curve", "Investopedia", "https://www.investopedia.com/terms/i/invertedyieldcurve.asp"),
+      link("10-year minus 2-year Treasury spread, live", "FRED", "https://fred.stlouisfed.org/series/T10Y2Y"),
+    ],
+  },
+  {
+    hint: "Ask where the money comes from: the share price going up, or cash the company pays you.",
+    links: [
+      link("Growth stocks", "Investopedia", "https://www.investopedia.com/terms/g/growthstock.asp"),
+      link("Income stocks", "Investopedia", "https://www.investopedia.com/terms/i/incomestock.asp"),
+    ],
+  },
+  {
+    hint: "A company exists before it is public. It only becomes a stock once it's listed and anyone can trade it.",
+    links: [
+      link("Initial public offering (IPO)", "Investopedia", "https://www.investopedia.com/terms/i/ipo.asp"),
+      link("Initial public offering", "Wikipedia", "https://en.wikipedia.org/wiki/Initial_public_offering"),
+    ],
+  },
+]
+
+const HELP_MACRO: StepHelp[] = [
+  {
+    hint: "Money moves toward the currency that pays more. Gold pays nothing, so it competes with what bonds pay after inflation. And stocks are valued against what cash earns.",
+    links: [
+      link("Interest rate differential", "Investopedia", "https://www.investopedia.com/terms/i/interest-rate-differential.asp"),
+      link("What the market expects the Fed to do next", "CME FedWatch", "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html"),
+    ],
+  },
+  {
+    hint: "Inflation rate = (new price − old price) ÷ old price.",
+    links: [
+      link("Inflation", "Investopedia", "https://www.investopedia.com/terms/i/inflation.asp"),
+      link("Consumer Price Index releases", "U.S. Bureau of Labor Statistics", "https://www.bls.gov/cpi/"),
+    ],
+  },
+  {
+    hint: "You keep the gap between the rate you earn and the rate you pay, on the whole amount.",
+    links: [link("Currency carry trade", "Investopedia", "https://www.investopedia.com/terms/c/currencycarrytrade.asp")],
+  },
+  {
+    hint: "Cutting rates makes borrowing cheaper and helps jobs. Hiking makes it expensive and cools prices.",
+    links: [
+      link("The Fed's two goals", "Federal Reserve", "https://www.federalreserve.gov/faqs/what-economic-goals-does-federal-reserve-seek-to-achieve-through-monetary-policy.htm"),
+      link("FOMC meeting calendar and statements", "Federal Reserve", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"),
+    ],
+  },
+  {
+    hint: "Real yield = what the bond pays − inflation. If inflation is bigger, the answer is negative.",
+    links: [
+      link("Real interest rate", "Investopedia", "https://www.investopedia.com/terms/r/realinterestrate.asp"),
+      link("10-year real yield (TIPS), live", "FRED", "https://fred.stlouisfed.org/series/DFII10"),
+    ],
+  },
+  {
+    hint: "Start with the news, then what traders expect the central bank to do, then bonds, and gold last.",
+    links: [link("Intermarket analysis", "Investopedia", "https://www.investopedia.com/terms/i/intermarketanalysis.asp")],
+  },
+]
+
+const HELP_TRADING: StepHelp[] = [
+  {
+    hint: "The thick part of a candle is drawn between two prices; the thin lines reach the extremes.",
+    links: [
+      link("Candlestick charts", "Investopedia", "https://www.investopedia.com/trading/candlestick-charting-what-is-it/"),
+      link("Candlestick chart", "Wikipedia", "https://en.wikipedia.org/wiki/Candlestick_chart"),
+    ],
+  },
+  {
+    hint: "“Point” means one price. “Area” means a range. “Low-volume” means little trading happened there.",
+    links: [
+      link("Volume profile: the basic concepts", "TradingView", "https://www.tradingview.com/support/solutions/43000502040-volume-profile/"),
+      link("Market profile", "Wikipedia", "https://en.wikipedia.org/wiki/Market_profile"),
+    ],
+  },
+  {
+    hint: "In an uptrend each swing peaks and bottoms out a little higher than the last one.",
+    links: [
+      link("Dow theory", "Investopedia", "https://www.investopedia.com/terms/d/dowtheory.asp"),
+      link("Trend analysis", "Investopedia", "https://www.investopedia.com/terms/t/trendanalysis.asp"),
+    ],
+  },
+  {
+    hint: "Three conditions: the range has finished forming, a candle closes outside it, and volume confirms.",
+    links: [
+      link("Opening range", "Investopedia", "https://www.investopedia.com/terms/o/opening-range.asp"),
+      link("Breakouts", "Investopedia", "https://www.investopedia.com/terms/b/breakout.asp"),
+    ],
+  },
+  {
+    hint: "Risk = entry − stop. For 1 : 2, the target sits twice that distance above the entry.",
+    links: [
+      link("Understanding the risk/reward ratio", "Investopedia", "https://www.investopedia.com/terms/r/riskrewardratio.asp"),
+      link("E-mini Nasdaq-100 (NQ) contract", "CME Group", "https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.html"),
+    ],
+  },
+  {
+    hint: "Markets spend most of their time agreeing on a price. Something breaks that agreement, price searches, then settles again.",
+    links: [link("Market profile and auction theory", "Wikipedia", "https://en.wikipedia.org/wiki/Market_profile")],
+  },
+]
+
+for (const [steps, help] of [
+  [TEST_PROFESSION, HELP_PROFESSION],
+  [TEST_MARKETS, HELP_MARKETS],
+  [TEST_MACRO, HELP_MACRO],
+  [TEST_TRADING, HELP_TRADING],
+] as const)
+  steps.forEach((st, i) => Object.assign(st, { help: help[i] }))

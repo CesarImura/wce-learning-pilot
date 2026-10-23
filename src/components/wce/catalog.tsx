@@ -20,7 +20,7 @@ import { TopicCoin } from "./topic-coin"
 
 type Status = "progress" | "new" | "done" | "soon"
 
-function statusOf(c: Course, p: Progress): Status {
+export function statusOf(c: Course, p: Progress): Status {
   if (c.status === "coming-soon") return "soon"
   const prog = courseProgress(c, p)
   if (prog.done === 0) return "new"
@@ -36,7 +36,7 @@ const STATUS_LABEL: Record<Status, string> = {
 
 // ---------------------------------------------------------------------------
 
-function ContinueCard({ progress }: { progress: Progress }) {
+export function ContinueCard({ progress }: { progress: Progress }) {
   // The most advanced course that still has lessons left, else the first available one.
   const candidates = COURSES.filter((c) => c.status === "available")
   const course =
@@ -94,7 +94,7 @@ function ContinueCard({ progress }: { progress: Progress }) {
   )
 }
 
-function CourseRow({ course, progress }: { course: Course; progress: Progress }) {
+export function CourseRow({ course, progress }: { course: Course; progress: Progress }) {
   const status = statusOf(course, progress)
   const prog = courseProgress(course, progress)
   const stats = courseStats(course)
@@ -202,7 +202,7 @@ export function Segmented<T extends string>({
   )
 }
 
-function Courses({ progress }: { progress: Progress }) {
+export function Courses({ progress }: { progress: Progress }) {
   const [filter, setFilter] = useState<Filter>("all")
   const list = COURSES.filter((c) => filter === "all" || statusOf(c, progress) === filter)
   return (
@@ -276,9 +276,19 @@ export function Catalog() {
   )
 }
 
+/** Every course with filters: the full list behind "All courses" on the Training home. */
+export function AllCourses() {
+  const progress = useProgress()
+  return (
+    <div className="mx-auto max-w-[1440px] px-4 pt-6 pb-24 lg:px-10">
+      <Courses progress={progress} />
+    </div>
+  )
+}
+
 /** For testers: wipe progress, streak, XP and league state, back to a first visit. */
 function resetDemo() {
-  if (!window.confirm("Reset all Academy progress on this device?")) return
+  if (!window.confirm("Reset all Training progress on this device?")) return
   Object.keys(localStorage)
     .filter((k) => k.startsWith("wce-academy-"))
     .forEach((k) => localStorage.removeItem(k))

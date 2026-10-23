@@ -166,7 +166,7 @@ export function LeaguePage() {
   )
 }
 
-function LeagueNumber({ n }: { n: number }) {
+export function LeagueNumber({ n }: { n: number }) {
   return (
     <span className="grid w-14 shrink-0 place-items-center rounded-[6px] bg-white/[0.06] font-wide text-[16px] tracking-[0.05em]">
       {String(n).padStart(2, "0")}
@@ -174,7 +174,7 @@ function LeagueNumber({ n }: { n: number }) {
   )
 }
 
-function ZoneDivider({ kind }: { kind: "promote" | "demote" }) {
+export function ZoneDivider({ kind }: { kind: "promote" | "demote" }) {
   return (
     <div
       className={cn(
@@ -190,7 +190,7 @@ function ZoneDivider({ kind }: { kind: "promote" | "demote" }) {
 
 const MEDAL = ["text-[#ffda74] bg-[#ffda74]/10", "text-[#d2d2d2] bg-[#d2d2d2]/10", "text-[#e3b991] bg-[#e3b991]/10"]
 
-function StandingRow({ row }: { row: Standing }) {
+export function StandingRow({ row }: { row: Standing }) {
   const initials = row.name
     .split(" ")
     .map((w) => w[0])
@@ -199,6 +199,7 @@ function StandingRow({ row }: { row: Standing }) {
     .toUpperCase()
   return (
     <div
+      data-you={row.you || undefined}
       className={cn(
         "flex items-center gap-3 border-t border-white/[0.06] px-3 py-2 first:border-t-0",
         row.you && "bg-white/[0.07]",

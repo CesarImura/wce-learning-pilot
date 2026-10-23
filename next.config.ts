@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   // Let phones on the same Wi-Fi open the dev server (http://<this Mac's IP>:3000).
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
   partialPrefetching: true,
+  // The prototype version switch lives bottom left; keep the dev badge out of its way.
+  devIndicators: { position: "bottom-right" },
   async redirects() {
     return [{ source: "/", destination: "/courses", permanent: false }];
   },

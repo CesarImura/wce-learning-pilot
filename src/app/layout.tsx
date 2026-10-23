@@ -27,9 +27,9 @@ const michroma = Michroma({
 })
 
 export const metadata: Metadata = {
-  title: "World Class Edge · Academy",
+  title: "World Class Edge · Training",
   description: "Learn trading by doing: interactive chart exercises.",
-  appleWebApp: { capable: true, title: "WCE Academy", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "WCE Training", statusBarStyle: "black-translucent" },
 }
 
 export const viewport: Viewport = {

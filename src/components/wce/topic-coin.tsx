@@ -29,7 +29,7 @@ export function TopicCoin({
       className={className}
       stats={
         tp.state === "locked"
-          ? { primary: "Soon", lines: ["Coming to the Academy"] }
+          ? { primary: "Soon", lines: ["Coming to Training"] }
           : {
               primary: tp.state === "mastered" ? "Mastered" : `${tp.pct}%`,
               lines: [`${tp.done}/${tp.total} lessons`, `${fmtPoints(tp.xp)} XP`],

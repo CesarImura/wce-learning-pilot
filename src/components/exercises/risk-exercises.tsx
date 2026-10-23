@@ -275,34 +275,52 @@ export function TradeJournal({ phase, onReady }: ExerciseProps) {
   const by = (r: number) => mid - (r / maxAbs) * (H * 0.55)
   const cy = (v: number) => mid - (v / 6) * (H * 0.55)
 
+  // Two columns on desktop: the chart and the question left, the trade log right.
   return (
-    <div className="space-y-4">
-      <ChartFrame>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" onMouseLeave={() => setHover(null)}>
-          <line x1={10} x2={W - 10} y1={mid} y2={mid} stroke="var(--border)" />
-          {LOG.map((t, i) => (
-            <rect
-              key={i}
-              x={10 + i * bw + bw * 0.2}
-              width={bw * 0.6}
-              y={Math.min(by(t.r), mid)}
-              height={Math.abs(by(t.r) - mid)}
-              rx={3}
-              fill={t.r > 0 ? "var(--up)" : "var(--down)"}
-              opacity={hover === null || hover === i ? 1 : 0.35}
-              onMouseEnter={() => setHover(i)}
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-4">
+        <ChartFrame>
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" onMouseLeave={() => setHover(null)}>
+            <line x1={10} x2={W - 10} y1={mid} y2={mid} stroke="var(--border)" />
+            {LOG.map((t, i) => (
+              <rect
+                key={i}
+                x={10 + i * bw + bw * 0.2}
+                width={bw * 0.6}
+                y={Math.min(by(t.r), mid)}
+                height={Math.abs(by(t.r) - mid)}
+                rx={3}
+                fill={t.r > 0 ? "var(--up)" : "var(--down)"}
+                opacity={hover === null || hover === i ? 1 : 0.35}
+                onMouseEnter={() => setHover(i)}
+              />
+            ))}
+            {review && (
+              <polyline
+                points={cumulative.map((v, i) => `${10 + i * bw + bw / 2},${cy(v)}`).join(" ")}
+                fill="none"
+                stroke="var(--brand)"
+                strokeWidth={2.5}
+              />
+            )}
+          </svg>
+        </ChartFrame>
+        <div className="space-y-2 rounded-lg border-2 border-dashed p-4">
+          <Label htmlFor="exp">What is this trader&apos;s expectancy (average R per trade)?</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="exp"
+              inputMode="decimal"
+              placeholder="e.g. 0.5"
+              value={answer}
+              disabled={review}
+              onChange={(e) => setAnswer(e.target.value)}
+              className="max-w-32 text-lg"
             />
-          ))}
-          {review && (
-            <polyline
-              points={cumulative.map((v, i) => `${10 + i * bw + bw / 2},${cy(v)}`).join(" ")}
-              fill="none"
-              stroke="var(--brand)"
-              strokeWidth={2.5}
-            />
-          )}
-        </svg>
-      </ChartFrame>
+            <span className="text-muted-foreground">R</span>
+          </div>
+        </div>
+      </div>
       <div className="overflow-hidden rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
@@ -332,21 +350,6 @@ export function TradeJournal({ phase, onReady }: ExerciseProps) {
             ))}
           </tbody>
         </table>
-      </div>
-      <div className="space-y-2 rounded-lg border-2 border-dashed p-4">
-        <Label htmlFor="exp">What is this trader&apos;s expectancy (average R per trade)?</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            id="exp"
-            inputMode="decimal"
-            placeholder="e.g. 0.5"
-            value={answer}
-            disabled={review}
-            onChange={(e) => setAnswer(e.target.value)}
-            className="max-w-32 text-lg"
-          />
-          <span className="text-muted-foreground">R</span>
-        </div>
       </div>
     </div>
   )

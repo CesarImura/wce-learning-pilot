@@ -57,6 +57,7 @@
    The platform is dark-only: black canvas, translucent "glass" panels. */
 :root {
   color-scheme: dark;
+  --card-radius: 12px;
   --background: #000000;
   --foreground: #ffffff;
   --card: rgb(255 255 255 / 0.05);
@@ -109,10 +110,17 @@
   }
 }
 
+/* :root from the prototype switch; any wrapper (Cesar's v1 lesson player) can pin its subtree too. */
+[data-corners="8"] {
+  --card-radius: 8px;
+}
+
 @utility glass {
   background-color: rgb(255 255 255 / 0.05);
   border: 1px solid rgb(255 255 255 / 0.1);
-  border-radius: var(--radius);
+  /* Cards are 12px (Cesar: less round than shadcn's default); rows, tiles and trays opt down to 8px.
+     The prototype switch can put cards back to 8px to compare (<html data-corners="8">). */
+  border-radius: var(--card-radius);
   backdrop-filter: blur(12px);
 }
 

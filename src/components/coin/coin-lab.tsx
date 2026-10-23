@@ -55,7 +55,7 @@ export function CoinLab() {
                 size={200}
                 stats={
                   st.state === "locked"
-                    ? { primary: "Soon", lines: ["Coming to the Academy"] }
+                    ? { primary: "Soon", lines: ["Coming to Training"] }
                     : {
                         primary:
                           st.state === "mastered" ? "Mastered" : `${st.pct}%`,

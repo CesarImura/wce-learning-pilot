@@ -142,8 +142,8 @@ export function Toast({ children, onDone }: { children: ReactNode; onDone: () =>
     return () => clearTimeout(id)
   }, [onDone])
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center">
-      <div className="flex items-center gap-2 rounded-full border border-white/15 bg-[#151719]/95 px-4 py-2 text-[14px] font-medium shadow-xl backdrop-blur animate-in fade-in slide-in-from-bottom-3 duration-300">
+    <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center">
+      <div className="flex items-center gap-2 rounded-full border border-white/15 bg-[#151719]/95 px-4 py-2 text-[14px] font-medium shadow-xl backdrop-blur animate-in fade-in slide-in-from-top-3 duration-300">
         {children}
       </div>
     </div>
@@ -213,7 +213,7 @@ export function StreakScreen({
 }
 
 const FIRSTS = {
-  "first-lesson": { title: "Your first lesson", text: "Welcome to the Academy. One down, many to go." },
+  "first-lesson": { title: "Your first lesson", text: "Welcome to Training. One down, many to go." },
   "first-flawless-test": { title: "Flawless", text: "Your first unit test without a single mistake." },
   "first-course": { title: "Course complete", text: "You finished every lesson in a course. That's rare." },
 } as const

@@ -11,7 +11,7 @@ import { Slider } from "@/components/ui/slider"
 import { CandleChart, useDragY, useSvgPoint } from "@/components/chart/candle-chart"
 import { fromAnchors, rng, type Candle } from "@/lib/market"
 import { cn } from "@/lib/utils"
-import { ChartFrame, Stat, fmtUsd, parseAnswer, sliderValue, useReveal, type ExerciseProps } from "./shared"
+import { ChartFrame, Stat, fmtUsd, parseAnswer, sliderValue, useAutoAnswer, useReveal, type ExerciseProps } from "./shared"
 
 // ---------------------------------------------------------------------------
 // Shared bits
@@ -59,18 +59,25 @@ function useNumberQuestion(
   answer: number,
   tolerance: number,
   correct: string,
-  hint: string,
+  shown: string,
   onReady: ExerciseProps["onReady"],
 ) {
   useEffect(() => {
     const n = parseAnswer(raw)
     if (n === null) return onReady(null)
+    // A wrong answer shows the right value and the same worked explanation as a right one.
     onReady(() =>
-      Math.abs(n - answer) <= tolerance ? { correct: true, detail: correct } : { correct: false, detail: hint },
+      Math.abs(n - answer) <= tolerance
+        ? { correct: true, detail: correct }
+        : { correct: false, answer: shown, detail: correct },
     )
-  }, [raw, answer, tolerance, correct, hint, onReady])
+  }, [raw, answer, tolerance, correct, shown, onReady])
 }
 
+/**
+ * The task: what the learner has to answer. It always comes first, so the
+ * question is read before the tools that help answer it.
+ */
 function QuestionBox({
   id,
   question,
@@ -89,12 +96,12 @@ function QuestionBox({
   after?: string
 }) {
   return (
-    <div className="space-y-2 rounded-lg border-2 border-dashed border-white/15 p-4">
-      <Label htmlFor={id} className="text-[15px] leading-snug text-white/85">
+    <div className="flex flex-col gap-3 rounded-[8px] bg-white/10 p-4">
+      <Label htmlFor={id} className="text-[16px] leading-6 font-normal text-pretty text-white">
         {question}
       </Label>
       <div className="flex items-center gap-2">
-        {before && <span className="text-white/50">{before}</span>}
+        {before && <span className="text-[16px] text-[#9e9e9e]">{before}</span>}
         <Input
           id={id}
           inputMode="decimal"
@@ -103,11 +110,45 @@ function QuestionBox({
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 max-w-40 text-lg"
+          className="h-12 max-w-48 rounded-[6px] border-[#333] bg-black/40 text-[18px] tabular-nums md:text-[18px]"
         />
-        {after && <span className="text-white/50">{after}</span>}
+        {after && <span className="text-[16px] text-[#9e9e9e]">{after}</span>}
       </div>
     </div>
+  )
+}
+
+/** A calculator to work the answer out: the inputs, then the results they produce right under them. */
+function Calculator({ hint, children, results }: { hint: string; children: ReactNode; results: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-5 rounded-[8px] border border-white/15 p-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-[16px] leading-5 font-medium text-white">Calculator</p>
+        <p className="text-[14px] leading-5 text-pretty text-[#9e9e9e]">{hint}</p>
+      </div>
+      <div className="flex flex-col gap-4">{children}</div>
+      <div className="flex flex-col gap-3">{results}</div>
+    </section>
+  )
+}
+
+/** Sets a calculator to the question's own numbers once the answer is checked, so the review shows the worked result. */
+function useSolvedOnReview(review: boolean, solve: () => void) {
+  const done = useRef(false)
+  useEffect(() => {
+    if (!review || done.current) return
+    done.current = true
+    solve()
+  }, [review, solve])
+}
+
+/** Context shown once the learner has answered: the "why" behind the numbers. */
+function Insight({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-[8px] bg-white/10 p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <p className="text-[16px] leading-5 font-medium text-white">{title}</p>
+      {children}
+    </section>
   )
 }
 
@@ -121,7 +162,7 @@ const BENCHMARKS = [
   { id: "guru", label: "Instagram guru: “10% a month”", short: "Guru", rate: Math.pow(1.1, 12) - 1 },
 ]
 
-export function ReturnsReality({ phase, onReady }: ExerciseProps) {
+export function ReturnsReality({ phase, onReady, autoAnswer }: ExerciseProps) {
   const [account, setAccount] = useState(25_000)
   const [raw, setRaw] = useState("")
   const review = phase === "review"
@@ -130,52 +171,16 @@ export function ReturnsReality({ phase, onReady }: ExerciseProps) {
     6000,
     1,
     "Even matching the best quant fund in history turns $10,000 into a $6,000 profit. Nobody lives on that, which is why trading isn't a get-rich-quick business model.",
-    "Set the account to $10,000 and read the Jim Simons bar: 60% of $10,000.",
+    "$6,000",
     onReady,
   )
+  useAutoAnswer(autoAnswer, (v) => setRaw(v === "correct" ? "6000" : "15000"))
+  // After answering, the calculator shows the worked question.
+  useSolvedOnReview(review, () => setAccount(10_000))
   const max = account * BENCHMARKS[3].rate
 
   return (
-    <div className="space-y-4">
-      <ChartFrame className="space-y-3 p-4">
-        {BENCHMARKS.map((b) => {
-          const profit = account * b.rate
-          const guru = b.id === "guru"
-          return (
-            <div key={b.id} className="space-y-1">
-              <div className="flex justify-between gap-3 text-[13px]">
-                <span className={guru ? "text-down" : "text-white/70"}>{b.label}</span>
-                <span className={cn("font-semibold tabular-nums", guru ? "text-down" : "text-white")}>
-                  +{fmtUsd(profit)}
-                </span>
-              </div>
-              <div className="h-3 overflow-hidden rounded-[2px] bg-white/5">
-                <div
-                  className={cn(
-                    "h-full rounded-[2px] transition-all duration-300",
-                    guru ? "bg-[repeating-linear-gradient(45deg,var(--down)_0_6px,transparent_6px_10px)]" : "bg-brand",
-                  )}
-                  style={{ width: `${Math.max(1, (profit / max) * 100)}%` }}
-                />
-              </div>
-            </div>
-          )
-        })}
-        <p className="pt-1 text-[12px] text-white/40">
-          Yearly profit. 80–90% of hedge funds fail to beat the S&P 500 over the long run.
-        </p>
-      </ChartFrame>
-      <div className="glass p-4">
-        <SliderRow
-          label="Account size"
-          value={account}
-          display={fmtUsd(account)}
-          min={1000}
-          max={100_000}
-          step={1000}
-          onChange={setAccount}
-        />
-      </div>
+    <div className="flex flex-col gap-4">
       <QuestionBox
         id="rr-q"
         question="With $10,000 and Jim Simons-level returns (60% a year), how much do you make in a year?"
@@ -184,6 +189,37 @@ export function ReturnsReality({ phase, onReady }: ExerciseProps) {
         disabled={review}
         before="$"
       />
+      <Calculator
+        hint="Set the account size from the question, then read the yearly profit of each investor."
+        results={
+          <div className="flex flex-col gap-3 rounded-[8px] bg-white/10 p-4">
+            {BENCHMARKS.map((b) => {
+              const profit = account * b.rate
+              const guru = b.id === "guru"
+              return (
+                <div key={b.id} className="flex flex-col gap-1">
+                  <div className="flex justify-between gap-3 text-[14px]">
+                    <span className={guru ? "text-down" : "text-white/70"}>{b.label}</span>
+                    <span className={cn("font-semibold tabular-nums", guru ? "text-down" : "text-white")}>+{fmtUsd(profit)}</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-[2px] bg-white/5">
+                    <div
+                      className={cn(
+                        "h-full rounded-[2px] transition-[width] duration-300",
+                        guru ? "bg-[repeating-linear-gradient(45deg,var(--down)_0_6px,transparent_6px_10px)]" : "bg-brand",
+                      )}
+                      style={{ width: `${Math.max(1, (profit / max) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+            <p className="pt-1 text-[12px] text-white/40">Yearly profit. 80–90% of hedge funds fail to beat the S&P 500 over the long run.</p>
+          </div>
+        }
+      >
+        <SliderRow label="Account size" value={account} display={fmtUsd(account)} min={1000} max={100_000} step={1000} onChange={setAccount} />
+      </Calculator>
     </div>
   )
 }
@@ -191,12 +227,16 @@ export function ReturnsReality({ phase, onReady }: ExerciseProps) {
 // ---------------------------------------------------------------------------
 // 2. Break-even curve (Video 01): win rate = 1 / (1 + R)
 
-export function BreakevenCurve({ phase, onReady }: ExerciseProps) {
+export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const toPoint = useSvgPoint(svgRef)
   const [pt, setPt] = useState({ r: 1, w: 70 })
   const [moved, setMoved] = useState(false)
   const dragging = useRef(false)
+  useAutoAnswer(autoAnswer, (v) => {
+    setPt(v === "correct" ? { r: 2, w: 33 } : { r: 1, w: 70 })
+    setMoved(true)
+  })
   const review = phase === "review"
 
   const W = 640
@@ -240,12 +280,14 @@ export function BreakevenCurve({ phase, onReady }: ExerciseProps) {
             correct: true,
             detail: `At 1:2 you only need to win 1 / (1 + 2) = 33% of the time to break even. Anything above the line has a profit factor above 1.`,
           }
-        : pt.r !== 2
-          ? { correct: false, detail: "First slide the point to a 1:2 reward-to-risk (x = 2), then find where it meets the line." }
-          : {
-              correct: false,
-              detail: `Close: at 1:2 break-even is 1 / (1 + 2) ≈ 33%. You're at ${pt.w}% (profit factor ${pf.toFixed(2)}).`,
-            },
+        : {
+            correct: false,
+            answer: "1 : 2 at a 33% win rate",
+            detail:
+              pt.r !== 2
+                ? `You're at 1 : ${pt.r}. Slide right to 1 : 2 (x = 2): there you only need to win 1 / (1 + 2) = 33% of the time to break even.`
+                : `Close: at 1 : 2 break-even is 1 / (1 + 2) ≈ 33%. You're at ${pt.w}% (profit factor ${pf.toFixed(2)}).`,
+          },
     )
   }, [pt, moved, pf, onReady])
 
@@ -321,85 +363,107 @@ export function BreakevenCurve({ phase, onReady }: ExerciseProps) {
 // ---------------------------------------------------------------------------
 // 3. Prop firm payout + business model (Video 02)
 
-export function PropFirm({ phase, onReady }: ExerciseProps) {
-  const [size, setSize] = useState(100_000)
+export function PropFirm({ phase, onReady, autoAnswer }: ExerciseProps) {
+  const [size, setSize] = useState(50_000)
   const [ret, setRet] = useState(5)
   const [split, setSplit] = useState(80)
   const [raw, setRaw] = useState("")
   const review = phase === "review"
-  const payout = size * (ret / 100) * (split / 100)
+  const profit = size * (ret / 100)
+  const payout = profit * (split / 100)
   useNumberQuestion(
     raw,
     16000,
     1,
     "$200,000 × 10% = $20,000 profit, and an 80% split pays you $16,000. Big upside, but most challenge buyers fail, and those fees fund the few payouts.",
-    "Profit = account × return, then multiply by your split: $200,000 × 10% × 80%.",
+    "$16,000",
     onReady,
   )
+  useAutoAnswer(autoAnswer, (v) => setRaw(v === "correct" ? "16000" : "20000"))
+  useSolvedOnReview(review, () => {
+    setSize(200_000)
+    setRet(10)
+    setSplit(80)
+  })
 
-  // 10,000 challenge buyers; ~0.03% get paid (from the lesson).
-  const grid = useMemo(() => {
-    const winners = new Set([1234, 4321, 8765])
-    return Array.from({ length: 10_000 }, (_, i) => (
-      <rect
-        key={i}
-        x={(i % 200) * 4}
-        y={Math.floor(i / 200) * 4}
-        width={3}
-        height={3}
-        fill={winners.has(i) ? "var(--gold)" : "rgb(255 255 255 / 0.12)"}
-      />
-    ))
-  }, [])
 
+  // Two columns on desktop: the task (and, once answered, who pays) left, the calculator right.
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Challenge fee" value="$1,000" />
-        <Stat label="Profit" value={fmtUsd(size * (ret / 100))} />
-        <Stat label="Your payout" value={fmtUsd(payout)} tone="up" />
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-4">
+        <QuestionBox
+          id="pf-q"
+          question="You pass a $200,000 challenge and make 10%. With an 80% split, what's your payout?"
+          value={raw}
+          onChange={setRaw}
+          disabled={review}
+          before="$"
+        />
+        {review && <PropFirmInsight />}
       </div>
-      <div className="glass space-y-4 p-4">
-        <div className="flex gap-1.5">
-          {[50_000, 100_000, 200_000].map((v) => (
-            <button
-              key={v}
-              onClick={() => setSize(v)}
-              className={cn(
-                "flex-1 rounded-md border px-2 py-2 text-[14px] font-medium",
-                size === v ? "border-brand bg-brand/15 text-white" : "border-white/10 bg-white/5 text-white/60",
-              )}
-            >
-              {fmtUsd(v)} account
-            </button>
-          ))}
+      <Calculator
+        hint="Set it to the numbers in the question (account size, return and split) and read your payout."
+        results={
+          <div className="grid grid-cols-2 gap-2">
+            <Stat label="Profit" value={fmtUsd(profit)} />
+            <Stat label="Your payout" value={fmtUsd(payout)} tone="up" />
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <span className="text-[14px] font-medium">Account size</span>
+          <div className="grid grid-cols-3 gap-2">
+            {[50_000, 100_000, 200_000].map((v) => (
+              <button
+                key={v}
+                disabled={review}
+                onClick={() => setSize(v)}
+                aria-pressed={size === v}
+                className={cn(
+                  "h-10 rounded-[6px] border px-2 text-[14px] font-medium tabular-nums transition-[scale,background-color,border-color] duration-150 enabled:active:scale-[0.96]",
+                  size === v ? "border-brand bg-brand/15 text-white" : "border-transparent bg-white/15 text-white/70 enabled:hover:bg-white/20",
+                )}
+              >
+                {fmtUsd(v)}
+              </button>
+            ))}
+          </div>
         </div>
-        <SliderRow label="Your return" value={ret} display={`${ret}%`} min={1} max={20} step={1} onChange={setRet} />
-        <SliderRow label="Profit split" value={split} display={`${split}%`} min={70} max={90} step={5} onChange={setSplit} />
-      </div>
-      <ChartFrame className="space-y-2 p-4">
-        <div className="flex items-baseline justify-between">
-          <p className="eyebrow">The other side of the deal</p>
-          <p className="text-[12px] text-white/40">10,000 challenge buyers</p>
-        </div>
-        <svg viewBox="0 0 800 200" className="w-full">
-          {grid}
-        </svg>
-        <p className="text-[13px] text-white/60">
-          <span className="text-gold">■</span> paid out (~0.03%). The firm collects{" "}
-          <span className="text-white">$10,000,000</span> in fees and pays a few winners from it. Usually
-          unregulated, so do your due diligence.
-        </p>
-      </ChartFrame>
-      <QuestionBox
-        id="pf-q"
-        question="You pass a $200,000 challenge and make 10%. With an 80% split, what's your payout?"
-        value={raw}
-        onChange={setRaw}
-        disabled={review}
-        before="$"
-      />
+        <SliderRow label="Your return" value={ret} display={`${ret}%`} min={1} max={20} step={1} onChange={setRet} disabled={review} />
+        <SliderRow label="Profit split" value={split} display={`${split}%`} min={70} max={90} step={5} onChange={setSplit} disabled={review} />
+      </Calculator>
     </div>
+  )
+}
+
+// Who funds the payout: 10,000 buyers pay $1,000 each, 3 pass (~0.03%, from the lesson).
+function PropFirmInsight() {
+  return (
+    <Insight title="Who pays your payout?">
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="People who buy a $1,000 challenge" value="10,000" className="bg-black/40" />
+        <Stat label="People who pass and get paid" value="3" className="bg-black/40 [&>div:last-child]:text-gold" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="text-[14px] leading-5 text-white/70">
+          Where the <span className="text-white">$10,000,000</span> in challenge fees goes
+        </p>
+        <div className="flex h-3 overflow-hidden rounded-full bg-white/10" role="img" aria-label="0.5% paid to winners, 99.5% kept by the firm">
+          <div className="h-full min-w-1 bg-gold" style={{ width: "0.48%" }} />
+        </div>
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[13px] text-white/60 tabular-nums">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-gold" /> Paid to the 3 winners: $48,000
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-white/30" /> Kept by the firm: $9,952,000
+          </span>
+        </div>
+      </div>
+      <p className="text-[14px] leading-5 text-pretty text-white/70">
+        Most buyers fail, and their fees pay the few who pass. Prop firms are usually unregulated, so do your due diligence.
+      </p>
+    </Insight>
   )
 }
 
@@ -524,7 +588,7 @@ const OWNERS = [
   { id: "C", share: 0.5, color: "var(--gold)" },
 ]
 
-export function DividendSplit({ phase, onReady }: ExerciseProps) {
+export function DividendSplit({ phase, onReady, autoAnswer }: ExerciseProps) {
   const [reinvest, setReinvest] = useState(0)
   const [raw, setRaw] = useState("")
   const review = phase === "review"
@@ -535,9 +599,11 @@ export function DividendSplit({ phase, onReady }: ExerciseProps) {
     200_000,
     1,
     "$500k − $100k reinvested = $400k paid out. C owns 50%, so C receives $200k. Shares give you ownership and a cut of the profits.",
-    "First take out what's reinvested ($500k − $100k), then give C its 50% share.",
+    "$200,000",
     onReady,
   )
+  useAutoAnswer(autoAnswer, (v) => setRaw(v === "correct" ? "200000" : "250000"))
+  useSolvedOnReview(review, () => setReinvest(100_000))
 
   // Donut arcs
   const arcs = OWNERS.map((o, k) => {
@@ -551,56 +617,7 @@ export function DividendSplit({ phase, onReady }: ExerciseProps) {
   })
 
   return (
-    <div className="space-y-4">
-      <ChartFrame className="grid items-center gap-4 p-4 sm:grid-cols-[200px_1fr]">
-        <svg viewBox="0 0 200 200" className="mx-auto w-44">
-          {arcs.map((a) => (
-            <path key={a.id} d={a.d} fill="none" stroke={a.color} strokeWidth={34} />
-          ))}
-          <text x={100} y={96} textAnchor="middle" className="fill-white/50 text-[11px] uppercase">
-            ownership
-          </text>
-          <text x={100} y={114} textAnchor="middle" className="fill-white text-[14px] font-semibold">
-            400 shares
-          </text>
-        </svg>
-        <div className="space-y-3">
-          {OWNERS.map((o) => (
-            <div key={o.id} className="space-y-1">
-              <div className="flex justify-between text-[14px]">
-                <span className="flex items-center gap-2">
-                  <span className="size-2.5 rounded-full" style={{ background: o.color }} />
-                  Founder {o.id} · {o.share * 100}%
-                </span>
-                <span className="font-semibold tabular-nums">{fmtUsd(paid * o.share)}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-[2px] bg-white/5">
-                <div
-                  className="h-full transition-all duration-300"
-                  style={{ width: `${((paid * o.share) / (earnings * 0.5)) * 100}%`, background: o.color }}
-                />
-              </div>
-            </div>
-          ))}
-          <p className="text-[12px] text-white/40">Dividends paid this year</p>
-        </div>
-      </ChartFrame>
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Net earnings" value="$500k" />
-        <Stat label="Reinvested" value={fmtUsd(reinvest)} />
-        <Stat label="Paid as dividends" value={fmtUsd(paid)} tone="up" />
-      </div>
-      <div className="glass p-4">
-        <SliderRow
-          label="Reinvested in the business"
-          value={reinvest}
-          display={fmtUsd(reinvest)}
-          min={0}
-          max={500_000}
-          step={25_000}
-          onChange={setReinvest}
-        />
-      </div>
+    <div className="flex flex-col gap-4">
       <QuestionBox
         id="div-q"
         question="The company reinvests $100k of its $500k earnings. How much does founder C receive?"
@@ -609,6 +626,62 @@ export function DividendSplit({ phase, onReady }: ExerciseProps) {
         disabled={review}
         before="$"
       />
+      <Calculator
+        hint="Set how much the company reinvests, then read what each founder receives."
+        results={
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Net earnings" value="$500k" />
+              <Stat label="Reinvested" value={fmtUsd(reinvest)} />
+              <Stat label="Paid out" value={fmtUsd(paid)} tone="up" />
+            </div>
+            <div className="grid items-center gap-4 rounded-[8px] bg-white/10 p-4 sm:grid-cols-[160px_1fr]">
+              <svg viewBox="0 0 200 200" className="mx-auto w-36" aria-hidden>
+                {arcs.map((a) => (
+                  <path key={a.id} d={a.d} fill="none" stroke={a.color} strokeWidth={34} />
+                ))}
+                <text x={100} y={96} textAnchor="middle" className="fill-white/50 text-[12px]">
+                  Ownership
+                </text>
+                <text x={100} y={114} textAnchor="middle" className="fill-white text-[14px] font-semibold">
+                  400 shares
+                </text>
+              </svg>
+              <div className="flex flex-col gap-3">
+                {OWNERS.map((o) => (
+                  <div key={o.id} className="flex flex-col gap-1">
+                    <div className="flex justify-between text-[14px]">
+                      <span className="flex items-center gap-2">
+                        <span className="size-2.5 rounded-full" style={{ background: o.color }} />
+                        Founder {o.id} · {o.share * 100}%
+                      </span>
+                      <span className="font-semibold tabular-nums">{fmtUsd(paid * o.share)}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-[2px] bg-white/5">
+                      <div
+                        className="h-full transition-[width] duration-300"
+                        style={{ width: `${((paid * o.share) / (earnings * 0.5)) * 100}%`, background: o.color }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-[12px] text-white/40">Dividends paid this year</p>
+              </div>
+            </div>
+          </>
+        }
+      >
+        <SliderRow
+          label="Reinvested in the business"
+          value={reinvest}
+          display={fmtUsd(reinvest)}
+          min={0}
+          max={500_000}
+          step={25_000}
+          onChange={setReinvest}
+          disabled={review}
+        />
+      </Calculator>
     </div>
   )
 }
@@ -732,7 +805,7 @@ export function FedCycle({ phase, onReady }: ExerciseProps) {
 // ---------------------------------------------------------------------------
 // 7. Carry trade & rate differentials (Video 07)
 
-export function CarryTrade({ phase, onReady }: ExerciseProps) {
+export function CarryTrade({ phase, onReady, autoAnswer }: ExerciseProps) {
   const [us, setUs] = useState(5)
   const [jp, setJp] = useState(0)
   const [raw, setRaw] = useState("")
@@ -744,9 +817,14 @@ export function CarryTrade({ phase, onReady }: ExerciseProps) {
     4000,
     1,
     "4.5% − 0.5% = 4% on $100,000 = $4,000 a year for borrowing cheap and lending dear. That flow into dollars is why USD/JPY trends when rate gaps are wide.",
-    "Carry = amount × (rate you earn − rate you pay): $100,000 × (4.5% − 0.5%).",
+    "$4,000",
     onReady,
   )
+  useAutoAnswer(autoAnswer, (v) => setRaw(v === "correct" ? "4000" : "5000"))
+  useSolvedOnReview(review, () => {
+    setUs(4.5)
+    setJp(0.5)
+  })
 
   const series = useMemo(() => {
     const r = rng(17)
@@ -758,56 +836,53 @@ export function CarryTrade({ phase, onReady }: ExerciseProps) {
   const hi = Math.max(...series, 160)
   const bias = diff > 0.5 ? "up" : diff < -0.5 ? "down" : "flat"
 
+  // Two columns on desktop: the task and calculator left, the USD/JPY drift it produces right.
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Rate gap" value={`${diff > 0 ? "+" : ""}${diff.toFixed(2)}%`} />
-        <Stat label="Carry / year" value={fmtUsd(carry)} tone={carry > 0 ? "up" : carry < 0 ? "down" : undefined} />
-        <Stat
-          label="USD/JPY bias"
-          value={
-            <span className="flex items-center gap-1">
-              {bias === "up" ? <ArrowUpRight className="size-5" /> : bias === "down" ? <ArrowDownRight className="size-5" /> : <ArrowRight className="size-5" />}
-              {bias === "up" ? "Up" : bias === "down" ? "Down" : "Range"}
-            </span>
-          }
-          tone={bias === "up" ? "up" : bias === "down" ? "down" : undefined}
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-4">
+        <QuestionBox
+          id="carry-q"
+          question="The Fed is at 4.5% and the Bank of Japan at 0.5%. What does the $100,000 carry trade earn per year?"
+          value={raw}
+          onChange={setRaw}
+          disabled={review}
+          before="$"
         />
+        <Calculator
+          hint="Borrow $100,000 worth of yen and lend it in dollars. Set both rates from the question and read the carry per year."
+          results={
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Rate gap" value={`${diff > 0 ? "+" : ""}${diff.toFixed(2)}%`} />
+              <Stat label="Carry per year" value={fmtUsd(carry)} tone={carry > 0 ? "up" : carry < 0 ? "down" : undefined} />
+              <Stat
+                label="USD/JPY bias"
+                value={
+                  <span className="flex items-center gap-1">
+                    {bias === "up" ? <ArrowUpRight className="size-5" /> : bias === "down" ? <ArrowDownRight className="size-5" /> : <ArrowRight className="size-5" />}
+                    {bias === "up" ? "Up" : bias === "down" ? "Down" : "Range"}
+                  </span>
+                }
+                tone={bias === "up" ? "up" : bias === "down" ? "down" : undefined}
+              />
+            </div>
+          }
+        >
+          <SliderRow label="Fed rate (US)" value={us} display={`${us.toFixed(2)}%`} min={0} max={6} step={0.25} onChange={setUs} disabled={review} />
+          <SliderRow label="Bank of Japan rate" value={jp} display={`${jp.toFixed(2)}%`} min={0} max={3} step={0.25} onChange={setJp} disabled={review} />
+        </Calculator>
       </div>
-      <ChartFrame>
-        <svg viewBox="0 0 640 200" className="w-full">
+      <div className="flex flex-col gap-2 rounded-[8px] bg-white/10 p-4">
+        <p className="text-[12px] text-white/50">USD/JPY: simulated drift from the rate gap</p>
+        <svg viewBox="0 0 640 200" className="w-full lg:aspect-[4/3]" preserveAspectRatio="none" aria-hidden>
           <polyline
             points={series.map((v, i) => `${10 + i * 10.4},${190 - ((v - lo) / (hi - lo)) * 175}`).join(" ")}
             fill="none"
             stroke="var(--brand)"
             strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
           />
-          <text x={12} y={18} className="fill-white/50 text-[11px] uppercase">
-            USD/JPY: simulated drift from the rate gap
-          </text>
         </svg>
-      </ChartFrame>
-      <div className="glass space-y-4 p-4">
-        <SliderRow label="Fed rate (US)" value={us} display={`${us.toFixed(2)}%`} min={0} max={6} step={0.25} onChange={setUs} />
-        <SliderRow
-          label="Bank of Japan rate"
-          value={jp}
-          display={`${jp.toFixed(2)}%`}
-          min={0}
-          max={3}
-          step={0.25}
-          onChange={setJp}
-        />
-        <p className="text-[12px] text-white/40">Carry trade: borrow $100,000 worth of yen, lend it to the US government.</p>
       </div>
-      <QuestionBox
-        id="carry-q"
-        question="The Fed is at 4.5% and the Bank of Japan at 0.5%. What does the $100,000 carry trade earn per year?"
-        value={raw}
-        onChange={setRaw}
-        disabled={review}
-        before="$"
-      />
     </div>
   )
 }
@@ -815,7 +890,7 @@ export function CarryTrade({ phase, onReady }: ExerciseProps) {
 // ---------------------------------------------------------------------------
 // 8. Real yields vs. gold (Video 08)
 
-export function RealYieldGold({ phase, onReady }: ExerciseProps) {
+export function RealYieldGold({ phase, onReady, autoAnswer }: ExerciseProps) {
   const [nominal, setNominal] = useState(4.5)
   const [inflation, setInflation] = useState(4)
   const [raw, setRaw] = useState("")
@@ -827,57 +902,19 @@ export function RealYieldGold({ phase, onReady }: ExerciseProps) {
     3,
     0.01,
     "5% − 2% = a 3% real yield. That's a solid, safe inflation hedge, so money prefers bonds and gold tends to suffer. When real yields fall, gold shines.",
-    "Real yield = bond yield − inflation.",
+    "3%",
     onReady,
   )
+  useAutoAnswer(autoAnswer, (v) => setRaw(v === "correct" ? "3" : "7"))
+  useSolvedOnReview(review, () => {
+    setNominal(5)
+    setInflation(2)
+  })
   const goldView =
     real >= 2 ? "Bonds win, gold under pressure" : real >= 0 ? "Close call, gold steady" : "Negative real yields, gold's strongest setup"
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Bond yield" value={`${nominal.toFixed(1)}%`} />
-        <Stat label="Inflation" value={`${inflation.toFixed(1)}%`} />
-        <Stat label="Real yield" value={`${real > 0 ? "+" : ""}${real.toFixed(1)}%`} tone={real >= 0 ? "up" : "down"} />
-      </div>
-      <ChartFrame className="space-y-3 p-4">
-        <p className="eyebrow">Where inflation-hedge money goes</p>
-        <div className="flex h-10 overflow-hidden rounded-[4px] text-[13px] font-semibold">
-          <div
-            className="flex items-center justify-center bg-brand text-black transition-all duration-500"
-            style={{ width: `${bondShare * 100}%` }}
-          >
-            Bonds {Math.round(bondShare * 100)}%
-          </div>
-          <div
-            className="flex items-center justify-center bg-gold text-black transition-all duration-500"
-            style={{ width: `${(1 - bondShare) * 100}%` }}
-          >
-            Gold {Math.round((1 - bondShare) * 100)}%
-          </div>
-        </div>
-        <p className="text-[14px] text-white/70">{goldView}</p>
-      </ChartFrame>
-      <div className="glass space-y-4 p-4">
-        <SliderRow
-          label="Bond yield (nominal)"
-          value={nominal}
-          display={`${nominal.toFixed(1)}%`}
-          min={0}
-          max={8}
-          step={0.5}
-          onChange={setNominal}
-        />
-        <SliderRow
-          label="Inflation"
-          value={inflation}
-          display={`${inflation.toFixed(1)}%`}
-          min={0}
-          max={8}
-          step={0.5}
-          onChange={setInflation}
-        />
-      </div>
+    <div className="flex flex-col gap-4">
       <QuestionBox
         id="ry-q"
         question="A bond yields 5% and inflation is 2%. What's the real yield?"
@@ -886,6 +923,39 @@ export function RealYieldGold({ phase, onReady }: ExerciseProps) {
         disabled={review}
         after="%"
       />
+      <Calculator
+        hint="Set the bond yield and inflation from the question, then read the real yield."
+        results={
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Bond yield" value={`${nominal.toFixed(1)}%`} />
+              <Stat label="Inflation" value={`${inflation.toFixed(1)}%`} />
+              <Stat label="Real yield" value={`${real > 0 ? "+" : ""}${real.toFixed(1)}%`} tone={real >= 0 ? "up" : "down"} />
+            </div>
+            <div className="flex flex-col gap-3 rounded-[8px] bg-white/10 p-4">
+              <p className="text-[12px] text-white/50">Where inflation-hedge money goes</p>
+              <div className="flex h-10 overflow-hidden rounded-[4px] text-[13px] font-semibold">
+                <div
+                  className="flex items-center justify-center bg-brand text-black transition-[width] duration-500"
+                  style={{ width: `${bondShare * 100}%` }}
+                >
+                  Bonds {Math.round(bondShare * 100)}%
+                </div>
+                <div
+                  className="flex items-center justify-center bg-gold text-black transition-[width] duration-500"
+                  style={{ width: `${(1 - bondShare) * 100}%` }}
+                >
+                  Gold {Math.round((1 - bondShare) * 100)}%
+                </div>
+              </div>
+              <p className="text-[14px] text-white/70">{goldView}</p>
+            </div>
+          </>
+        }
+      >
+        <SliderRow label="Bond yield (nominal)" value={nominal} display={`${nominal.toFixed(1)}%`} min={0} max={8} step={0.5} onChange={setNominal} disabled={review} />
+        <SliderRow label="Inflation" value={inflation} display={`${inflation.toFixed(1)}%`} min={0} max={8} step={0.5} onChange={setInflation} disabled={review} />
+      </Calculator>
     </div>
   )
 }
