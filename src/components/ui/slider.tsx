@@ -30,7 +30,7 @@ function Slider({
         <SliderPrimitive.Track
           data-slot="slider-track"
           // A chunky bar the value fills in white; the thumb is a dark notch near the end of the fill.
-          className="relative grow overflow-hidden rounded-[8px] bg-white/10 select-none data-horizontal:h-10 data-horizontal:w-full data-vertical:h-full data-vertical:w-10"
+          className="relative grow overflow-hidden rounded-[8px] bg-white/10 select-none data-horizontal:h-8 data-horizontal:w-full data-vertical:h-full data-vertical:w-8"
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
@@ -42,7 +42,7 @@ function Slider({
             data-slot="slider-thumb"
             key={index}
             // White so the fill runs to the thumb's right edge (the indicator stops at its center) and reaches the end at max.
-            className="relative block h-10 w-5 shrink-0 rounded-[6px] bg-white select-none before:absolute before:inset-y-3 before:left-1 before:w-[3px] before:rounded-full before:bg-black/80 after:absolute after:-inset-x-2 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden disabled:pointer-events-none"
+            className="relative block h-8 w-5 shrink-0 rounded-[6px] bg-white select-none before:absolute before:inset-y-2 before:left-1 before:w-[3px] before:rounded-full before:bg-black/80 after:absolute after:-inset-x-2 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden disabled:pointer-events-none"
           />
         ))}
       </SliderPrimitive.Control>
