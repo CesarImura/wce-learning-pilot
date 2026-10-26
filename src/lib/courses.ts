@@ -187,6 +187,13 @@ export const COURSES: Course[] = [
   },
 ]
 
+/**
+ * The launch pilot: three free courses, one per level (24 Oct daily). Placeholder picks until the
+ * pilot courses are chosen on the platform; the rest of the catalog stays in the data for the lab.
+ */
+export const PILOT_COURSE_IDS = ["beginner-series", "order-flow", "trader-dna"]
+export const PILOT_COURSES = PILOT_COURSE_IDS.map((id) => COURSES.find((c) => c.id === id)!).filter(Boolean)
+
 export function getCourse(id: string) {
   return COURSES.find((c) => c.id === id)
 }

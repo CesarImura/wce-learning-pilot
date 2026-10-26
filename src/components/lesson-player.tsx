@@ -35,6 +35,7 @@ import { ReviewPanel, VideoSheet, fmtTime } from "@/components/academy/review"
 import { OreArt } from "@/components/academy/league"
 import type { ExerciseProps, Feedback } from "@/components/exercises/shared"
 import { PrototypePanel, type Layout, type PreviewMode } from "@/components/prototype-panel"
+import { CourseReward, Disclaimer, onLessonCompleted, onUnitOnePassed, proGate } from "@/components/wce/paywall"
 import { TOPICS } from "@/lib/topics"
 import { CandleBuilder, CandleScrub } from "@/components/exercises/candle-exercises"
 import {
@@ -191,6 +192,21 @@ export function LessonPlayer({
   const progress = ((index + (feedback || done ? 1 : 0)) / steps.length) * 100
   const flawless = graded.total > 0 && graded.right === graded.total
   const bonus = test && !practice ? test.bonus + (flawless ? test.flawlessBonus : 0) : 0
+  // Training Pro fake door (Discovery board): mistakes review is a Pro door on the lesson completion
+  // screen only, and passing the Unit 1 test is the main trigger. paywall.tsx holds it back in the
+  // first session and during the cooldown, then delivers it at a later lesson completion.
+  const practiceMistakesPro = () => proGate("mistakes_review", practiceMistakes)
+  // Depend on plain values only: the reward screen's count-ups re-render the player many times a second.
+  const endReady = done && endQueue.length === 0 && !failed && !practice
+  const passedFirstUnit = endReady && !!test && !!course && course.units[0]?.id === test.unitId
+  useEffect(() => {
+    if (!endReady) return
+    // After the reward has had a moment on screen.
+    const t = setTimeout(passedFirstUnit ? onUnitOnePassed : onLessonCompleted, 1600)
+    return () => clearTimeout(t)
+  }, [endReady, passedFirstUnit])
+  // Finishing the last unit test completes the course: that earns the IQ Capital coupon.
+  const courseDone = done && !!test && !practice && !!course && courseProgress(course, readProgress()).testsPassed >= course.units.length
 
   // Preview: once the exercise has filled in its scripted answer, show the feedback it produces.
   // Nothing here touches hearts, XP or the review list.
@@ -504,6 +520,7 @@ export function LessonPlayer({
           flawlessBonus={flawless ? test.flawlessBonus : 0}
           backHref={backHref}
           league={leagueSnap}
+          reward={courseDone && course ? <CourseReward courseId={course.id} courseTitle={course.title} /> : null}
           review={
             missed.length > 0 ? (
               <ReviewPanel courseId={courseId} lesson={lesson} missed={missed} onPracticeMistakes={practiceMistakes} />
@@ -538,7 +555,7 @@ export function LessonPlayer({
               Continue
             </Link>
             <button
-              onClick={missed.length ? practiceMistakes : () => restart()}
+              onClick={missed.length ? practiceMistakesPro : () => restart()}
               className={cn(lessonButton, "gap-2 bg-[#262626] text-white hover:bg-[#2e2e2e]")}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -546,6 +563,7 @@ export function LessonPlayer({
               {missed.length ? "Practice your mistakes" : "Practice again"}
             </button>
           </div>
+          <Disclaimer className="text-center" />
         </main>
       </Backdrop>
     )
@@ -1072,6 +1090,7 @@ function TestReward({
   backHref,
   league,
   review,
+  reward,
 }: {
   unitTitle: string
   right: number
@@ -1083,6 +1102,7 @@ function TestReward({
   backHref: string
   league: LeagueSnap | null
   review: ReactNode
+  reward?: ReactNode
 }) {
   const rows = [
     { label: `Correct answers (${right}/${total})`, value: points },
@@ -1124,6 +1144,7 @@ function TestReward({
           <span className="text-[22px] font-semibold text-[#f5ddb1] tabular-nums">+{totalPts} XP</span>
         </div>
       </div>
+      {reward}
       {league && <LeagueStanding {...league} />}
       {review}
       <Link href={backHref} className={cn(bigButton, "flex w-full items-center justify-center bg-gold text-black hover:bg-gold/90")}>

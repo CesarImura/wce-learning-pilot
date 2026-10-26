@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useSyncExternalStore } from "react"
 import Link from "next/link"
 import {
   BookOpen,
@@ -28,6 +28,7 @@ import { syncLeagueWeek, useLeague } from "@/lib/engagement"
 import { LEAGUES, weekId, weeklyStatus } from "@/lib/league"
 import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
+import { CourseReward } from "./paywall"
 import { topicOf } from "@/lib/courses"
 
 const ICONS: Record<Lesson["icon"], LucideIcon> = {
@@ -162,6 +163,13 @@ export function CourseDetail({ course }: { course: Course }) {
   const progress = useProgress()
   const stats = courseStats(course)
   const prog = courseProgress(course, progress)
+  // The coupon for finishing the course; ?reward=preview shows it before the course is done (prototype).
+  const previewReward = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(location.search).get("reward") === "preview",
+    () => false,
+  )
+  const finished = prog.total > 0 && prog.done >= prog.total && prog.testsPassed >= course.units.length
   const results = Object.entries(progress).filter(([k]) => k.startsWith(`${course.id}/`))
   const accuracy = results.length ? Math.round(results.reduce((n, [, r]) => n + r.accuracy, 0) / results.length) : null
   const ctaHref = prog.next
@@ -261,6 +269,11 @@ export function CourseDetail({ course }: { course: Course }) {
             </div>
           </div>
           <CourseLeague />
+          {(finished || previewReward) && (
+            <div className="border-t border-white/10 p-4">
+              <CourseReward courseId={course.id} courseTitle={course.title} compact />
+            </div>
+          )}
         </aside>
 
         {/* Units + lesson path */}

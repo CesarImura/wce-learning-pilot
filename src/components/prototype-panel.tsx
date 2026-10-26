@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import { usePathname } from "next/navigation"
 import { SlidersHorizontal, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COOLDOWN_DAYS, resetPaywallState } from "@/components/wce/paywall"
 
 export type Layout = "v1" | "v2"
 export type PreviewMode = "default" | "wrong" | "right"
@@ -40,7 +41,7 @@ function createPref<T extends string>(key: string, values: readonly T[], fallbac
     return () => listeners.delete(cb)
   }
   const use = () => useSyncExternalStore(subscribe, read, () => fallback)
-  return { use, set }
+  return { use, set, read }
 }
 
 // Training home layout: v1 = one page per section (Learn, League, Collection, Lab tabs),
@@ -52,6 +53,16 @@ export const useHomeLayout = homePref.use
 // "Your week" card on the v2 home: v1 = the first take, v2 = streak line and days in one box.
 const weekPref = createPref<Layout>("wce-academy-week-card", ["v1", "v2"], "v2")
 export const useWeekCard = weekPref.use
+
+// Paywall test: A = control (Training always free, no paywall), B = fake door paywall (Discovery board, 24 Oct).
+export type PaywallGroup = "A" | "B"
+const paywallPref = createPref<PaywallGroup>("wce-training-paywall-group", ["A", "B"], "B")
+export const usePaywallGroup = paywallPref.use
+export const readPaywallGroup = paywallPref.read
+
+// Closed beta: students outside the beta see a waitlist instead of Training.
+const betaPref = createPref<"in" | "out">("wce-training-beta", ["in", "out"], "in")
+export const useBeta = betaPref.use
 
 // Card corners: 8px (shadcn default) or 12px (Cesar's ask). The glass utility reads <html data-corners>.
 type Corners = "8" | "12"
@@ -97,6 +108,8 @@ export function HomeLayoutSwitch() {
   const layout = useHomeLayout()
   const week = useWeekCard()
   const corners = cornersPref.use()
+  const paywall = usePaywallGroup()
+  const beta = useBeta()
   const onHome = usePathname() === "/courses"
   useEffect(() => {
     document.documentElement.dataset.corners = corners
@@ -127,6 +140,36 @@ export function HomeLayoutSwitch() {
           options={[
             { id: "v1", title: "First take of the week card" },
             { id: "v2", title: "Streak line and days share one box" },
+          ]}
+        />
+      )}
+      <Segmented
+        label="Paywall"
+        value={paywall}
+        onChange={paywallPref.set}
+        options={[
+          { id: "A", title: "Group A: control, Training always free" },
+          { id: "B", title: "Group B: fake door paywall" },
+        ]}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">Paywall rules</span>
+        <button
+          onClick={resetPaywallState}
+          title={`Start over as a first session: no cooldown (${COOLDOWN_DAYS} days after a close), no owed paywall`}
+          className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+        >
+          Reset
+        </button>
+      </div>
+      {onHome && (
+        <Segmented
+          label="Beta"
+          value={beta}
+          onChange={betaPref.set}
+          options={[
+            { id: "in", title: "In the closed beta" },
+            { id: "out", title: "Outside the beta: waitlist" },
           ]}
         />
       )}

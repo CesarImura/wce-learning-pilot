@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono, Michroma, Newsreader } from "next/font/google"
 import { CoinInspector } from "@/components/coin/coin-inspector"
+import { PaywallHost } from "@/components/wce/paywall"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <CoinInspector />
+        <PaywallHost />
       </body>
     </html>
   )

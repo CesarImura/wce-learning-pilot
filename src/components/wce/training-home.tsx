@@ -5,24 +5,61 @@
 // pattern of Duolingo, Uxcel and Brilliant on Mobbin: a main column plus a side rail.
 // The league owns the right column; streak and totals sit in the main column.
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { ChevronRight, Flame, FlaskConical, Gift } from "lucide-react"
+import { ChevronRight, Flame, FlaskConical, Gift, MessageSquarePlus } from "lucide-react"
 import { OreArt } from "@/components/academy/league"
 import { StandingRow, ZoneDivider } from "@/components/academy/league-page"
-import { ALL_TYPES, COURSES, type Course } from "@/lib/courses"
+import { ALL_TYPES, PILOT_COURSES, type Course } from "@/lib/courses"
 import { DEMOTE, GROUP_SIZE, LEAGUES, PROMOTE, academyStats, timeLeft, weekId, weeklyStatus } from "@/lib/league"
 import { syncLeagueWeek, useLeague, useStreak } from "@/lib/engagement"
 import { fmtPoints, topicProgress, useProgress, type Progress } from "@/lib/progress"
 import { TOPIC_LIST } from "@/lib/topics"
+import { track } from "@/lib/analytics"
 import { cn } from "@/lib/utils"
-import { useHomeLayout, useWeekCard } from "@/components/prototype-panel"
+import { useBeta, useHomeLayout, usePaywallGroup, useWeekCard } from "@/components/prototype-panel"
+import { ProBadge, openCourseRequest, proGate } from "./paywall"
 import { Catalog, ContinueCard, CourseRow, statusOf } from "./catalog"
 import { TopicCoin } from "./topic-coin"
 
 /** /courses: the prototype panel picks between the original catalog (v1) and this home (v2). */
 export function TrainingEntry() {
-  return useHomeLayout() === "v1" ? <Catalog /> : <TrainingHome />
+  const layout = useHomeLayout()
+  if (useBeta() === "out") return <Waitlist />
+  return layout === "v1" ? <Catalog /> : <TrainingHome />
+}
+
+/** Outside the closed beta, Training is a waitlist (Discovery board · Paywall, "In closed beta?"). */
+function Waitlist() {
+  const [joined, setJoined] = useState(false)
+  return (
+    <div className="mx-auto flex min-h-[70dvh] max-w-[560px] flex-col items-center justify-center gap-6 px-4 py-16 text-center">
+      <div className="flex -space-x-4">
+        {PILOT_COURSES.map((c) => (
+          <TopicCoin key={c.id} topicId={c.topic} size={88} />
+        ))}
+      </div>
+      <div className="flex flex-col gap-3">
+        <h1 className="text-[32px] leading-10 font-medium tracking-[-0.6px] text-balance">Training is in closed beta</h1>
+        <p className="text-[16px] leading-6 text-[#cfcfd0]">
+          Short interactive lessons built from the mentors’ classes, with a daily streak and a weekly league. We’re opening it to students in small groups.
+        </p>
+      </div>
+      {joined ? (
+        <p className="flex h-12 items-center rounded-[6px] bg-white/5 px-5 text-[16px] text-white">You’re on the list. We’ll email you when your group opens.</p>
+      ) : (
+        <button
+          onClick={() => {
+            setJoined(true)
+            track("training_waitlist_joined", {})
+          }}
+          className="h-12 rounded-[6px] bg-white px-6 text-[16px] font-medium text-black transition-colors hover:bg-white/90"
+        >
+          Join the waitlist
+        </button>
+      )}
+    </div>
+  )
 }
 
 export function TrainingHome() {
@@ -76,16 +113,45 @@ const STATUS_ORDER = { progress: 0, new: 1, done: 2, soon: 3 } as const
 
 function CoursesPreview({ progress }: { progress: Progress }) {
   // Every course fits here (there are only a handful): what you're doing first, then what's next.
-  const list = [...COURSES].sort((a: Course, b: Course) => STATUS_ORDER[statusOf(a, progress)] - STATUS_ORDER[statusOf(b, progress)])
+  const list = [...PILOT_COURSES].sort((a: Course, b: Course) => STATUS_ORDER[statusOf(a, progress)] - STATUS_ORDER[statusOf(b, progress)])
   return (
     <section>
-      <SectionHeader title="Courses" note={`${COURSES.length} courses`} />
+      <SectionHeader title="Courses" note={`${PILOT_COURSES.length} free courses`} />
       <div className="glass divide-y divide-white/10 overflow-hidden">
         {list.map((c) => (
           <CourseRow key={c.id} course={c} progress={progress} />
         ))}
+        <RequestCourseRow />
       </div>
     </section>
+  )
+}
+
+/** The 4th card: ask for a course. In the paywall test it is one of the Pro doors. */
+function RequestCourseRow() {
+  const group = usePaywallGroup()
+  return (
+    <button
+      onClick={() => proGate("request_card", openCourseRequest)}
+      className="group flex w-full flex-wrap items-center gap-4 p-3 text-left transition-colors hover:bg-white/[0.03] sm:flex-nowrap"
+    >
+      <span className="grid w-[76px] shrink-0 place-items-center py-1 sm:w-[104px]">
+        <span className="grid size-[68px] place-items-center rounded-full border border-dashed border-white/25 bg-white/[0.03] text-white/70 transition-colors group-hover:border-[#6abef2]/60 group-hover:text-[#bae5ff] sm:size-[92px]">
+          <MessageSquarePlus className="size-7" />
+        </span>
+      </span>
+      <span className="min-w-0 flex-1 space-y-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[17px] font-medium">Request a course</span>
+          {group === "B" && <ProBadge />}
+        </span>
+        <span className="block text-[14px] text-white/55">Futures, CFDs, prop firm rules… tell us what to build next.</span>
+      </span>
+      <span className="flex h-9 shrink-0 items-center gap-1 rounded-[6px] border border-white/15 px-3 text-[14px] font-medium text-white/80 transition-colors group-hover:border-white/30 group-hover:text-white">
+        Request
+        <ChevronRight className="size-4" />
+      </span>
+    </button>
   )
 }
 

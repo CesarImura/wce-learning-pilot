@@ -4,10 +4,11 @@ import type { ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Coins, FlaskConical, Lock, Search, Trophy } from "lucide-react"
+import { Bell, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Coins, FlaskConical, Lock, Search, Sparkles, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BASE_POINTS, fmtPoints } from "@/lib/progress"
-import { HomeLayoutSwitch, useHomeLayout } from "@/components/prototype-panel"
+import { HomeLayoutSwitch, useHomeLayout, usePaywallGroup } from "@/components/prototype-panel"
+import { Disclaimer, openPaywall } from "@/components/wce/paywall"
 
 // Mirrors the platform's top bar (Figma "Sidebar" component). Only Student Area
 // is built in this prototype; the other tabs are inert placeholders.
@@ -48,6 +49,22 @@ export function PointsTracker() {
         </span>
       </span>
       <ChevronDown className="size-5 text-white/60" />
+    </button>
+  )
+}
+
+/**
+ * Training Pro badge (fake door, group B only): opens the full list of Pro benefits. It lives in Training's own
+ * header, never in the platform bar: Pro covers Training only, the rest of World Class Edge doesn't change.
+ */
+function ProDoor() {
+  if (usePaywallGroup() !== "B") return null
+  return (
+    <button
+      onClick={() => openPaywall("pro_badge")}
+      className="flex h-[38px] items-center gap-1.5 rounded-[4px] bg-[#edd066]/10 px-3 text-[14px] font-medium text-[#edd066] ring-1 ring-[#edd066]/25 transition-colors hover:bg-[#edd066]/15"
+    >
+      <Sparkles className="size-4" /> Training Pro
     </button>
   )
 }
@@ -147,6 +164,9 @@ function AcademyNav() {
             )
           })}
         </nav>
+        <div className="ml-auto">
+          <ProDoor />
+        </div>
       </div>
     </div>
   )
@@ -188,20 +208,27 @@ const CRUMBS: Record<string, { label: string; wide?: boolean }> = {
   "/lab": { label: "Exercise lab" },
 }
 
-function TrainingCrumb() {
-  const crumb = CRUMBS[usePathname()]
-  if (!crumb) return null
+/** v2 Training header: "Training" on the home, a way back on inner pages, and the Training Pro door. */
+function TrainingBar() {
+  const pathname = usePathname()
+  const crumb = CRUMBS[pathname]
+  if (!crumb && pathname !== "/courses") return null
   return (
     // Same container as the page below it, so the crumb lines up with the title (the league page is wider).
-    <div className={cn("mx-auto px-4 pt-5 lg:px-10", crumb.wide ? "max-w-[1680px]" : "max-w-[1440px]")}>
-      <nav className="flex items-center gap-1.5 text-[14px] text-white/50">
-        <Link href="/courses" className="-ml-1 flex items-center gap-1 rounded-[4px] px-1 py-0.5 transition-colors hover:text-white">
-          <ChevronLeft className="size-4" />
-          Training
-        </Link>
-        <ChevronRight className="size-4 text-white/30" />
-        <span className="text-white/80">{crumb.label}</span>
-      </nav>
+    <div className={cn("mx-auto flex min-h-[38px] items-center justify-between gap-3 px-4 pt-5 lg:px-10", crumb?.wide ? "max-w-[1680px]" : "max-w-[1440px]")}>
+      {crumb ? (
+        <nav className="flex items-center gap-1.5 text-[14px] text-white/50">
+          <Link href="/courses" className="-ml-1 flex items-center gap-1 rounded-[4px] px-1 py-0.5 transition-colors hover:text-white">
+            <ChevronLeft className="size-4" />
+            Training
+          </Link>
+          <ChevronRight className="size-4 text-white/30" />
+          <span className="text-white/80">{crumb.label}</span>
+        </nav>
+      ) : (
+        <span className="font-serif text-[18px] text-white/90 italic">Training</span>
+      )}
+      <ProDoor />
     </div>
   )
 }
@@ -217,8 +244,11 @@ export function PageShell({ children }: { children: ReactNode }) {
         style={{ backgroundImage: "linear-gradient(180deg, rgb(12,30,41) 13%, rgb(49,76,94) 120%)" }}
       />
       <TopNav />
-      {hub ? <TrainingCrumb /> : <AcademyNav />}
+      {hub ? <TrainingBar /> : <AcademyNav />}
       <div className={cn("relative", !hub && "pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0")}>{children}</div>
+      <footer className="relative mx-auto max-w-[1440px] px-4 pb-10 lg:px-10">
+        <Disclaimer />
+      </footer>
       {!hub && <AcademyTabBar />}
       <HomeLayoutSwitch />
     </div>
