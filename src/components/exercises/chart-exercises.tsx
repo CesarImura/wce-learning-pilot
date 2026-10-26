@@ -495,6 +495,9 @@ export function PredictFakeout({ phase, onReady }: ExerciseProps) {
 // ---------------------------------------------------------------------------
 // Place the trade
 
+/** Snaps a dragged price to 0.05 so the lines land on the round levels their labels show. */
+const snap = (p: number) => Math.round(p * 20) / 20
+
 export function PlaceTrade({ phase, onReady }: ExerciseProps) {
   const { candles, visible, resistance } = useMemo(() => breakoutScenario(), [])
   const entry = candles[visible - 1].c
@@ -507,9 +510,11 @@ export function PlaceTrade({ phase, onReady }: ExerciseProps) {
   const risk = entry - stop
   const reward = tp - entry
   const rr = risk > 0 ? reward / risk : 0
+  // Graded on the R:R as shown (one decimal), so "1 : 2.0" always passes.
+  const rrShown = Math.round(rr * 10) / 10
   const rules = [
     { ok: stop < resistance, text: "Stop below the broken resistance (108)" },
-    { ok: rr >= 2, text: "Reward is at least 2× the risk" },
+    { ok: rrShown >= 2, text: "Reward is at least 2× the risk" },
     { ok: stop < entry && tp > entry, text: "Stop under entry, target above" },
   ]
   const allOk = rules.every((r) => r.ok)
@@ -577,8 +582,8 @@ export function PlaceTrade({ phase, onReady }: ExerciseProps) {
                 strokeDasharray="2 4"
               />
               <DragLine s={s} svgRef={svgRef} price={entry} label="Entry (market)" tone="muted" disabled onChange={() => {}} />
-              <DragLine s={s} svgRef={svgRef} price={tp} label="Take profit" tone="up" disabled={review} onChange={setTp} />
-              <DragLine s={s} svgRef={svgRef} price={stop} label="Stop loss" tone="down" disabled={review} onChange={setStop} />
+              <DragLine s={s} svgRef={svgRef} price={tp} label="Take profit" tone="up" disabled={review} onChange={(p) => setTp(snap(p))} />
+              <DragLine s={s} svgRef={svgRef} price={stop} label="Stop loss" tone="down" disabled={review} onChange={(p) => setStop(snap(p))} />
               {review && shown > outcome.i && outcome.hit !== "open" && (
                 <circle
                   cx={s.x(outcome.i)}
@@ -596,7 +601,7 @@ export function PlaceTrade({ phase, onReady }: ExerciseProps) {
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Risk" value={risk.toFixed(2)} tone="down" />
         <Stat label="Reward" value={reward.toFixed(2)} tone="up" />
-        <Stat label="R:R" value={`1 : ${rr.toFixed(1)}`} tone={rr >= 2 ? "up" : "down"} />
+        <Stat label="R:R" value={`1 : ${rrShown.toFixed(1)}`} tone={rrShown >= 2 ? "up" : "down"} />
       </div>
       <ul className="space-y-1.5 px-1">
         {rules.map((r) => (

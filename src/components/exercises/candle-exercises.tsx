@@ -141,7 +141,8 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
   useEffect(() => {
     if (!touched) return onReady(null)
     onReady(() => {
-      const tol = 0.3
+      // 0.45 is ~16 SVG units, about 9px on a phone; 0.3 left a 6px window per handle with no price labels to go by.
+      const tol = 0.45
       const off = (["o", "h", "l", "c"] as const).filter((k) => Math.abs(v[k] - ohlc[k]) > tol)
       const names = { o: "Open", h: "High", l: "Low", c: "Close" }
       return off.length === 0

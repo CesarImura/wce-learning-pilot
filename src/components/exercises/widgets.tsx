@@ -275,7 +275,8 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
   useEffect(() => {
     if (!moved) return onReady(null)
     onReady(() =>
-      pt.r === 2 && Math.abs(pt.w - 100 / 3) <= 2.5
+      // ±4 points (30–37%): 1% is ~2px on a phone and the dot sits under the finger.
+      pt.r === 2 && Math.abs(pt.w - 100 / 3) <= 4
         ? {
             correct: true,
             detail: `At 1:2 you only need to win 1 / (1 + 2) = 33% of the time to break even. Anything above the line has a profit factor above 1.`,

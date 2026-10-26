@@ -119,7 +119,8 @@ export function ExpectancyLab({ phase, onReady }: ExerciseProps) {
   const [moved, setMoved] = useState(false)
   const review = phase === "review"
   const w = win / 100
-  const e = w * rr - (1 - w)
+  // Rounded to the 2 decimals shown: 30% at 1:3 is 0.19999999999999996 in floating point, not +0.20R.
+  const e = Math.round((w * rr - (1 - w)) * 100) / 100
 
   const paths = useMemo(() => {
     const r = rng(seed * 7919)
@@ -411,7 +412,8 @@ export function OrderBook({ phase, onReady }: ExerciseProps) {
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Order" value={`${size.toFixed(1)} BTC`} />
         <Stat label="Avg fill" value={fmtUsd(avg, 2)} />
-        <Stat label="Slippage" value={`${slippage.toFixed(3)}%`} tone={slippage < limit ? "up" : "down"} />
+        {/* 4 decimals: the answer (2.8 BTC, 0.02958%) would round to "0.030%" and look like it misses the limit. */}
+        <Stat label="Slippage" value={`${slippage.toFixed(4)}%`} tone={slippage < limit ? "up" : "down"} />
       </div>
       <div className="overflow-hidden rounded-lg border bg-card font-mono text-sm">
         <div className="grid grid-cols-3 bg-muted/60 px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
