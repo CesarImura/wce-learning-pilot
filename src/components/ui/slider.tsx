@@ -26,21 +26,23 @@ function Slider({
       thumbAlignment="edge"
       {...props}
     >
-      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none py-2 pointer-coarse:py-3 data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
+      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden rounded-full bg-muted select-none data-horizontal:h-2.5 pointer-coarse:data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-2.5"
+          // A chunky bar the value fills in white; the thumb is a dark notch near the end of the fill.
+          className="relative grow overflow-hidden rounded-[8px] bg-white/10 select-none data-horizontal:h-10 data-horizontal:w-full data-vertical:h-full data-vertical:w-10"
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
-            className="bg-primary select-none data-horizontal:h-full data-vertical:w-full"
+            className="rounded-[8px] bg-white select-none data-horizontal:h-full data-vertical:w-full"
           />
         </SliderPrimitive.Track>
         {Array.from({ length: _values.length }, (_, index) => (
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
-            className="relative block size-5 shrink-0 rounded-full shadow-md pointer-coarse:size-7 border-2 border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+            // White so the fill runs to the thumb's right edge (the indicator stops at its center) and reaches the end at max.
+            className="relative block h-10 w-5 shrink-0 rounded-[6px] bg-white select-none before:absolute before:inset-y-3 before:left-1 before:w-[3px] before:rounded-full before:bg-black/80 after:absolute after:-inset-x-2 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden disabled:pointer-events-none"
           />
         ))}
       </SliderPrimitive.Control>
