@@ -237,7 +237,7 @@ export function OrderItems({ items, topLabel, bottomLabel, explain, phase, verdi
 
   const move = (i: number, d: -1 | 1) => {
     const j = i + d
-    if (j < 0 || j >= list.length) return
+    if (review || j < 0 || j >= list.length) return
     const next = [...list]
     ;[next[i], next[j]] = [next[j], next[i]]
     setList(next)
@@ -527,7 +527,8 @@ export function NumberAnswer({
           {unit && unitBefore && <span className="text-white/50">{unit}</span>}
           <Input
             id="num-answer"
-            inputMode="decimal"
+            // The iOS decimal keypad has no minus key, so negative answers get the full keyboard.
+            inputMode={answer < 0 ? "text" : "decimal"}
             autoComplete="off"
             placeholder="Your answer"
             value={raw}

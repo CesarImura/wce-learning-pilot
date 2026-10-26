@@ -110,7 +110,8 @@ export const fmtUsd = (n: number, d = 0) =>
 
 /** Parses typed answers like "6,000", "$6000", "6k", "33%" or "0,5". */
 export function parseAnswer(raw: string) {
-  const s = raw.trim().toLowerCase().replace(/[$€%\s]/g, "")
+  // Typographic minus/dash count as a minus sign ("−1%", as the questions themselves write it).
+  const s = raw.trim().toLowerCase().replace(/[$€%\s]/g, "").replace(/[−–]/g, "-")
   const mult = s.endsWith("k") ? 1_000 : s.endsWith("m") ? 1_000_000 : 1
   const body = s.replace(/[km]$/, "")
   // "6,000" → thousands separator; "0,5" → decimal comma.
