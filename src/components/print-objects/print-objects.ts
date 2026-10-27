@@ -104,7 +104,7 @@ const MODELS: (() => ModelDef)[] = [
     w1.translate(0, 1.42, 0)
     const w2 = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 4)
     w2.translate(0, -1.3, 0)
-    return { parts: [[lathe(p, 8), pal, "a"], [w1, ["bone"], "w"], [w2, ["bone"], "w"]], rz: -0.18 }
+    return { parts: [[lathe(p, 8), pal, "a"], [w1, ["bone"], "w"], [w2, ["bone"], "w"]], rz: 0 }
   },
   () => {
     const pal = ["blue", "bone", "black"]
@@ -299,13 +299,13 @@ export function renderItem(
   const a = w / h
   Object.assign(it.cam, { left: -s * a, right: s * a, top: s * 0.95, bottom: -s * 1.05 })
   it.cam.updateProjectionMatrix()
-  it.U.uSeed.value = o.still ? 1 : (o.tick % 3) + 1
+  it.U.uSeed.value = o.still ? 1 : (Math.floor(o.tick / 2) % 3) + 1
   it.U.uRes.value.set(o.cw, o.ch)
   it.U.uCtr.value.set(x + w / 2, y + h / 2)
   if (!o.advance) {
     // scroll redraw: same pose, new position
   } else if (!o.still) {
-    it.yaw += 0.05
+    it.yaw += 0.075
     if (o.hovered) {
       if (!it.hs) it.hs = performance.now()
       ANIM[it.index](it, (performance.now() - it.hs) / 1000)

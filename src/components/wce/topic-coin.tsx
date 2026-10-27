@@ -36,6 +36,16 @@ export function TopicCoin({
         onMouseLeave={() => setHovered(false)}
         className={cn("relative shrink-0", tp.state === "locked" && "opacity-40", className)}
       >
+        {/* A printed halftone shadow instead of a soft glow, so the object sits on the card like the print. */}
+        <div
+          aria-hidden
+          className="absolute bottom-[6%] left-1/2 h-[13%] w-[58%] -translate-x-1/2"
+          style={{
+            backgroundImage: "radial-gradient(circle, rgb(255 255 255 / 0.2) 0.9px, transparent 1.3px)",
+            backgroundSize: "5px 5px",
+            maskImage: "radial-gradient(closest-side, #000 35%, transparent)",
+          }}
+        />
         <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered && tp.state !== "locked"} className="absolute inset-0" />
       </div>
     )

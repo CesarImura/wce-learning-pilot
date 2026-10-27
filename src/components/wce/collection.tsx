@@ -10,11 +10,13 @@ import { courseProgress, fmtPoints, topicProgress, useProgress, type Progress } 
 import { TOPIC_LIST, type Topic } from "@/lib/topics"
 import { cn } from "@/lib/utils"
 import { TopicCoin } from "./topic-coin"
+import { useCourseArt } from "@/components/prototype-panel"
 
 const STATE_LABEL = { locked: "Coming soon", new: "Not started", active: "Polishing", mastered: "Mastered" } as const
 
 function CoinCard({ topic, progress }: { topic: Topic; progress: Progress }) {
   const tp = topicProgress(topic.id, progress)
+  const art = useCourseArt()
   const locked = tp.state === "locked"
   const courses = COURSES.filter((c) => c.topic === topic.id)
   const next = tp.courses.find((c) => courseProgress(c, progress).next) ?? tp.courses[0]
@@ -23,7 +25,7 @@ function CoinCard({ topic, progress }: { topic: Topic; progress: Progress }) {
     <div className={cn("glass flex gap-4 p-4 sm:flex-col sm:items-center sm:gap-5 sm:p-6 sm:text-center", locked && "opacity-80")}>
       <div
         className="grid shrink-0 place-items-center rounded-[10px] p-2 sm:w-full sm:py-6"
-        style={{ backgroundImage: `radial-gradient(circle at 50% 50%, ${topic.color}1f, transparent 65%)` }}
+        style={art === "print" ? undefined : { backgroundImage: `radial-gradient(circle at 50% 50%, ${topic.color}1f, transparent 65%)` }}
       >
         <TopicCoin topicId={topic.id} size={176} className="max-sm:size-[104px]!" />
       </div>
