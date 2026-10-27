@@ -10,7 +10,7 @@ import { LeagueCard } from "@/components/academy/league"
 import { DelightPreview } from "@/components/academy/delight"
 import { CoinLab } from "@/components/coin/coin-lab"
 import { ALL_TYPES, COURSES, courseStats, topicOf, type Course } from "@/lib/courses"
-import { KIND_LABELS } from "@/lib/lessons"
+import { KIND_LABELS, type ExerciseKind } from "@/lib/lessons"
 import { academyStats } from "@/lib/league"
 import { useStreak } from "@/lib/engagement"
 import { courseProgress, fmtPoints, useProgress, type Progress } from "@/lib/progress"
@@ -299,6 +299,27 @@ function resetDemo() {
 }
 
 /** All exercise types in one place (demo / authoring reference). */
+/** Exercises changed in the pre-demo pass (Oct 2026), tagged on their lab card; the note shows on hover. */
+const UPDATED: Partial<Record<ExerciseKind, string>> = {
+  "candle-scrub": "New chunky slider",
+  "candle-builder": "Looser tolerance, handles pop and glow on hover/drag",
+  "draw-support": "Price line reacts on hover/drag",
+  "ma-tuner": "New chunky slider",
+  "order-book": "Slippage shows 4 decimals, new slider",
+  "place-trade": "R:R graded as shown (1 : 2.0 passes), lines snap to 0.05",
+  "position-sizer": "New chunky sliders",
+  "expectancy-lab": "30% at 1:3 now counts as +0.20R, new sliders",
+  order: "Arrows locked after Check",
+  "returns-reality": "New chunky slider",
+  "breakeven-curve": "Wider 30–37% window, dot pops on hover/drag",
+  number: "Negative answers typeable on iPhone",
+  "prop-firm": "New chunky sliders",
+  "yield-curve": "Dots pop and glow on hover/drag",
+  "dividend-split": "New chunky slider",
+  "carry-trade": "New chunky sliders",
+  "real-yield-gold": "New chunky sliders",
+}
+
 export function ExerciseLab() {
   return (
     <div className="mx-auto max-w-[1440px] space-y-6 px-4 pt-8 pb-24 lg:px-10">
@@ -332,7 +353,14 @@ export function ExerciseLab() {
             href={`/courses/lab/${st.kind}`}
             className="group rounded-lg border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-brand/40 hover:bg-white/[0.06]"
           >
-            <p className="text-[12px] font-medium tracking-wide text-brand-soft uppercase">{KIND_LABELS[st.kind]}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[12px] font-medium tracking-wide text-brand-soft uppercase">{KIND_LABELS[st.kind]}</p>
+              {UPDATED[st.kind] && (
+                <span title={UPDATED[st.kind]} className="pearl-chip shrink-0">
+                  Updated
+                </span>
+              )}
+            </div>
             <p className="mt-1 line-clamp-2 text-[14px] text-white/80 group-hover:text-white">{st.prompt}</p>
           </Link>
         ))}
