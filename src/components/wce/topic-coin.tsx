@@ -46,7 +46,7 @@ export function TopicCoin({
             maskImage: "radial-gradient(closest-side, #000 35%, transparent)",
           }}
         />
-        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered && tp.state !== "locked"} className="absolute inset-0" />
+        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered} className="absolute inset-0" />
       </div>
     )
   return (

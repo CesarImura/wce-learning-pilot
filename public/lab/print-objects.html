@@ -117,7 +117,7 @@ if(Math.round(R.width)!==cw||Math.round(R.height)!==ch){cw=Math.round(R.width);c
 rd.setScissor(0,0,cw,ch);rd.clear();
 items.forEach((it,i)=>{const r=cards[i].getBoundingClientRect(),x=r.left-R.left,y=R.bottom-r.bottom,w=r.width,h=r.height;
 rd.setViewport(x,y,w,h);rd.setScissor(x,y,w,h);const s=2.2,a=w/h;Object.assign(it.cam,{left:-s*a,right:s*a,top:s*.74,bottom:-s*1.26});it.cam.updateProjectionMatrix();
-it.U.uSeed.value=S.draws?(S.draws>100?tick:tick%S.draws)+1:0;it.U.uJump.value=S.draws?S.jump:0;it.U.uMap.value=S.map;it.U.uTex.value=S.tex;it.U.uRes.value.set(cw,ch);it.U.uCtr.value.set(x+w/2,y+h/2);
+it.U.uSeed.value=S.draws?(S.draws>100?Math.floor(tick/3):Math.floor(tick/3)%S.draws)+1:0;it.U.uJump.value=S.draws?S.jump:0;it.U.uMap.value=S.map;it.U.uTex.value=S.tex;it.U.uRes.value.set(cw,ch);it.U.uCtr.value.set(x+w/2,y+h/2);
 it.yaw+=.05;if(hov[i])ANIM[i](it,(performance.now()-it.hs)/1000);else rest(it);it.fold+=((hov[i]?1:0)-it.fold)*.35;it.grp.rotation.y=it.yaw;it.grp.rotation.x=Math.sin(t/1100+i)*.08+it.fold*.22;
 rd.render(it.sc,it.cam)})})(0);
 </script></body></html>
