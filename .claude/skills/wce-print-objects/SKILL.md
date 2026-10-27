@@ -16,11 +16,11 @@ Course art for Training: each course (by its topic) gets a small 3D folded-paper
 | Setting | Value | Uniform |
 |---|---|---|
 | Texture mode | Flat: each face is a window onto its own flat 2D print, no perspective distortion | `uMap = 0` |
-| Boil | 3 drawings, changing every other tick (~4 per second) | `uSeed = floor(tick / 2) % 3 + 1` |
+| Boil | 3 drawings, a new one every 3rd tick (~4 per second, slower than the motion) | `uSeed = floor(tick / 3) % 3 + 1` |
 | Texture size | 0.5 (finer than the lab's 1.0 start) | `uTex = 0.5` |
 | Jump | 0 (prints re-roll their grain but do not shift) | `uJump = 0` |
 | Cards | Dark WCE cards `#0d0d0d`, hairline `white/10` border |  |
-| Motion | Stepped at ~8 fps (render only every 125 ms), slow yaw, hover plays the model's animation | |
+| Motion | Stepped at ~12 fps (render only every 83 ms), slow yaw, hover plays the model's animation | |
 
 ## Rules of the style (why it looks printed, not plastic)
 1. **No lighting.** Faces are flat inks. Form comes from which ink each face gets, never from a light. No rim light, no gradients.

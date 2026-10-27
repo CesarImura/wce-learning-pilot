@@ -299,13 +299,14 @@ export function renderItem(
   const a = w / h
   Object.assign(it.cam, { left: -s * a, right: s * a, top: s * 0.95, bottom: -s * 1.05 })
   it.cam.updateProjectionMatrix()
-  it.U.uSeed.value = o.still ? 1 : (Math.floor(o.tick / 2) % 3) + 1
+  // Textures boil slower than the motion: a new drawing every 3rd tick (~4 per second).
+  it.U.uSeed.value = o.still ? 1 : (Math.floor(o.tick / 3) % 3) + 1
   it.U.uRes.value.set(o.cw, o.ch)
   it.U.uCtr.value.set(x + w / 2, y + h / 2)
   if (!o.advance) {
     // scroll redraw: same pose, new position
   } else if (!o.still) {
-    it.yaw += 0.075
+    it.yaw += 0.05
     if (o.hovered) {
       if (!it.hs) it.hs = performance.now()
       ANIM[it.index](it, (performance.now() - it.hs) / 1000)

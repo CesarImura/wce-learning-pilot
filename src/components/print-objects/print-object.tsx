@@ -6,7 +6,7 @@ import { MODEL_COUNT, createItem, renderItem, type PrintItem } from "./print-obj
 
 type Slot = { el: HTMLElement; item: PrintItem; hovered: boolean }
 
-const STEP_MS = 125 // ~8 fps, stepped on purpose
+const STEP_MS = 83 // ~12 fps, stepped on purpose
 const slots = new Set<Slot>()
 let shared: { rd: THREE.WebGLRenderer; canvas: HTMLCanvasElement; dpr: number; stop: () => void; w: number; h: number } | null = null
 
