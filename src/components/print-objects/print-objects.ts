@@ -239,7 +239,57 @@ export type PrintItem = {
   dispose: () => void
 }
 
-export function createItem(i: number, dpr: number): PrintItem {
+export type Engine = {
+  rd: THREE.WebGLRenderer
+  mat: THREE.ShaderMaterial
+  dpr: number
+  /** Grow the offscreen drawing buffer (never shrinks, so it is not resized per frame). */
+  ensure: (w: number, h: number) => void
+  dispose: () => void
+}
+
+/** One offscreen renderer and ONE shader material shared by every slot, so the shader compiles once. */
+export function createEngine(dpr: number): Engine {
+  const canvas = document.createElement("canvas")
+  const rd = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true })
+  rd.setPixelRatio(1)
+  rd.setScissorTest(true)
+  rd.setClearColor(0x000000, 0)
+  const U = {
+    uTex: { value: 0.5 },
+    uScl: { value: 1 },
+    uExplode: { value: 0 },
+    uSeed: { value: 0 },
+    uJump: { value: 0 },
+    uMap: { value: 0 },
+    uDpr: { value: dpr },
+    uM: { value: 0 },
+    uRes: { value: new THREE.Vector2(1, 1) },
+    uCtr: { value: new THREE.Vector2(0, 0) },
+  }
+  const mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERTEX_SHADER, fragmentShader: FRAGMENT_SHADER, side: THREE.DoubleSide })
+  let cw = 0
+  let ch = 0
+  return {
+    rd,
+    mat,
+    dpr,
+    ensure: (w, h) => {
+      if (w > cw || h > ch) {
+        cw = Math.max(cw, w)
+        ch = Math.max(ch, h)
+        rd.setSize(cw, ch, false)
+      }
+    },
+    dispose: () => {
+      mat.dispose()
+      rd.dispose()
+      rd.forceContextLoss()
+    },
+  }
+}
+
+export function createItem(i: number, eng: Engine): PrintItem {
   const d = MODELS[i]()
   const U: Uniforms = {
     uTex: { value: 0.5 },
@@ -248,12 +298,12 @@ export function createItem(i: number, dpr: number): PrintItem {
     uSeed: { value: 0 },
     uJump: { value: 0 },
     uMap: { value: 0 },
-    uDpr: { value: dpr },
+    uDpr: { value: eng.dpr },
     uM: { value: i * 1.37 + 0.4 },
     uRes: { value: new THREE.Vector2(1, 1) },
     uCtr: { value: new THREE.Vector2(0, 0) },
   }
-  const mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERTEX_SHADER, fragmentShader: FRAGMENT_SHADER, side: THREE.DoubleSide })
+  const mat = eng.mat
   const grp = new THREE.Group()
   const geos: THREE.BufferGeometry[] = []
   const ms = d.parts.map(([geo, pal, salt]) => {
@@ -285,7 +335,6 @@ export function createItem(i: number, dpr: number): PrintItem {
     U, grp, sc, cam, ms, yaw: REST_YAW[i] ?? i * 0.7, fold: 0, hs: 0, index: i,
     dispose: () => {
       geos.forEach((g) => g.dispose())
-      mat.dispose()
     },
   }
 }
@@ -380,7 +429,7 @@ const ANIM: ((it: PrintItem, th: number) => void)[] = [
 
 const ONE = new THREE.Vector3(1, 1, 1)
 
-function rest(it: PrintItem) {
+export function rest(it: PrintItem) {
   it.ms.forEach((m) => {
     m.position.lerp(m.userData.bp, 0.4)
     m.scale.lerp(ONE, 0.4)
@@ -391,20 +440,27 @@ function rest(it: PrintItem) {
   it.U.uExplode.value *= 0.5
 }
 
-/** Advance one stepped frame of a slot and draw it into the given viewport (bottom-origin canvas px). */
+/**
+ * Advance one stepped frame of a slot and draw it into its own 2D canvas. The canvas is the slot box plus a bleed
+ * of max(w,h)*0.6 on every side, so tall objects and hover gestures can spill over the card instead of being cropped.
+ */
 export function renderItem(
-  rd: THREE.WebGLRenderer,
+  eng: Engine,
   it: PrintItem,
-  o: { x: number; y: number; w: number; h: number; cw: number; ch: number; tick: number; t: number; hovered: boolean; still: boolean; advance: boolean; speed?: number },
+  ctx: CanvasRenderingContext2D,
+  o: { w: number; h: number; tick: number; t: number; hovered: boolean; still: boolean; advance: boolean; speed?: number },
 ) {
-  const { x, y, w, h } = o
-  // No crop: draw into a viewport that bleeds well past the slot, so tall objects and hover gestures
-  // (the plane's flight, the crystal's shatter) can spill over the card instead of being cut at its edge.
+  const { rd } = eng
+  const { w, h } = o
   const p = Math.max(w, h) * 0.6
   const W = w + 2 * p
   const H = h + 2 * p
-  rd.setViewport(x - p, y - p, W, H)
-  rd.setScissor(x - p, y - p, W, H)
+  const bw = ctx.canvas.width
+  const bh = ctx.canvas.height
+  if (bw < 1 || bh < 1) return
+  eng.ensure(bw, bh)
+  rd.setViewport(0, 0, bw, bh)
+  rd.setScissor(0, 0, bw, bh)
   // Course art slots replace the coins: no label above, so frame tight and nearly centred. The camera keeps the
   // slot's scale and widens with the bleed, so the object stays the same size.
   const s = 1.2
@@ -419,30 +475,41 @@ export function renderItem(
   it.U.uMap.value = cfg.map
   it.U.uTex.value = cfg.tex
   it.U.uJump.value = cfg.jump
-  it.U.uRes.value.set(o.cw, o.ch)
-  it.U.uCtr.value.set(x + w / 2, y + h / 2)
+  it.U.uRes.value.set(W, H)
+  // Slot centre inside the render viewport (CSS px; the shader divides gl_FragCoord by uDpr).
+  it.U.uCtr.value.set(bw / (2 * eng.dpr), bh / (2 * eng.dpr))
   // Flat prints scale with the object: pixels per world unit here vs the lab's 230px cards at camera size 2.2
   // (52px per unit), so a 68px row icon and the 220px banner show the same print relative to the shape.
   it.U.uScl.value = h / (2 * s) / (230 / (2 * 2.2))
-  if (!o.advance) {
-    // scroll redraw: same pose, new position
-  } else if (!o.still) {
-    const speed = o.speed ?? 1
-    it.yaw += cfg.spin * speed
-    if (o.hovered) {
-      if (!it.hs) it.hs = performance.now()
-      ANIM[it.index](it, ((performance.now() - it.hs) / 1000) * speed)
+  if (o.advance) {
+    if (!o.still) {
+      const speed = o.speed ?? 1
+      it.yaw += cfg.spin * speed
+      if (o.hovered) {
+        if (!it.hs) it.hs = performance.now()
+        ANIM[it.index](it, ((performance.now() - it.hs) / 1000) * speed)
+      } else {
+        it.hs = 0
+        rest(it)
+      }
     } else {
-      it.hs = 0
       rest(it)
     }
-  } else {
-    rest(it)
+    it.fold += ((o.hovered && !o.still ? 1 : 0) - it.fold) * 0.35
   }
-  if (o.advance) it.fold += ((o.hovered && !o.still ? 1 : 0) - it.fold) * 0.35
   it.grp.rotation.y = it.yaw
   it.grp.rotation.x = o.still ? 0 : Math.sin(o.t / 1100 + it.index) * 0.08 + it.fold * 0.22
-  // Bleed areas overlap neighbouring slots: keep their colour, only reset depth for this object.
-  rd.clearDepth()
+  // Copy this slot's values into the shared material's uniforms.
+  const U = eng.mat.uniforms
+  for (const k in it.U) {
+    const src = (it.U as Record<string, { value: unknown }>)[k].value
+    const dst = U[k].value
+    if (typeof src === "number") U[k].value = src
+    else (dst as THREE.Vector2).copy(src as THREE.Vector2)
+  }
+  rd.clear()
   rd.render(it.sc, it.cam)
+  ctx.clearRect(0, 0, bw, bh)
+  // GL origin is bottom-left: the viewport sits at the bottom of the offscreen buffer.
+  ctx.drawImage(rd.domElement, 0, rd.domElement.height - bh, bw, bh, 0, 0, bw, bh)
 }
