@@ -17,6 +17,7 @@ import { courseProgress, fmtPoints, useProgress, type Progress } from "@/lib/pro
 import { cn } from "@/lib/utils"
 import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
+import { useCourseArt } from "@/components/prototype-panel"
 
 type Status = "progress" | "new" | "done" | "soon"
 
@@ -47,6 +48,7 @@ export function ContinueCard({ progress }: { progress: Progress }) {
   const prog = courseProgress(course, progress)
   const unit = course.units.find((u) => u.lessons.some((l) => l.id === prog.next?.id))
   const topic = topicOf(course)
+  const art = useCourseArt()
 
   return (
     <Link
@@ -55,9 +57,9 @@ export function ContinueCard({ progress }: { progress: Progress }) {
     >
       <div
         className="grid place-items-center py-5 sm:py-8"
-        style={{ backgroundImage: `radial-gradient(circle at 50% 50%, ${topic.color}22, transparent 65%)` }}
+        style={art === "print" ? undefined : { backgroundImage: `radial-gradient(circle at 50% 50%, ${topic.color}22, transparent 65%)` }}
       >
-        <TopicCoin topicId={course.topic} size={168} float className="max-sm:size-[116px]!" />
+        <TopicCoin topicId={course.topic} size={art === "print" ? 220 : 168} float className="max-sm:size-[140px]!" />
       </div>
       <div className="flex flex-col justify-between gap-5 p-5">
         <div className="space-y-1">

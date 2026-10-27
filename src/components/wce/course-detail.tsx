@@ -28,6 +28,7 @@ import { syncLeagueWeek, useLeague } from "@/lib/engagement"
 import { LEAGUES, weekId, weeklyStatus } from "@/lib/league"
 import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
+import { useCourseArt } from "@/components/prototype-panel"
 import { CourseReward } from "./paywall"
 import { topicOf } from "@/lib/courses"
 
@@ -160,6 +161,7 @@ function UnitTestNode({ course, unit, progress }: { course: Course; unit: Unit; 
 }
 
 export function CourseDetail({ course }: { course: Course }) {
+  const art = useCourseArt()
   const progress = useProgress()
   const stats = courseStats(course)
   const prog = courseProgress(course, progress)
@@ -206,9 +208,9 @@ export function CourseDetail({ course }: { course: Course }) {
             <div className="flex items-center gap-4">
               <div
                 className="grid size-[104px] shrink-0 place-items-center rounded-full"
-                style={{ backgroundImage: `radial-gradient(circle at 50% 50%, ${topicOf(course).color}33, transparent 70%)` }}
+                style={art === "print" ? undefined : { backgroundImage: `radial-gradient(circle at 50% 50%, ${topicOf(course).color}33, transparent 70%)` }}
               >
-                <TopicCoin topicId={course.topic} size={96} float />
+                <TopicCoin topicId={course.topic} size={art === "print" ? 104 : 96} float />
               </div>
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/55">

@@ -295,7 +295,7 @@ export function renderItem(
   rd.setViewport(x, y, w, h)
   rd.setScissor(x, y, w, h)
   // Course art slots replace the coins: no label above, so frame tight and nearly centred, with room for hover gestures.
-  const s = 1.5
+  const s = 1.2
   const a = w / h
   Object.assign(it.cam, { left: -s * a, right: s * a, top: s * 0.95, bottom: -s * 1.05 })
   it.cam.updateProjectionMatrix()
