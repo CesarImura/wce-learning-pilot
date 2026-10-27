@@ -197,12 +197,15 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
             </text>
           )}
           {handles.map(({ k, x, color }) => (
-            <g key={k} {...drags[k]} className={review ? "" : "cursor-ns-resize"}>
+            <g key={k} {...drags[k]} className={review ? "" : "drag-knob"}>
               <rect x={x - 22} y={y(v[k]) - 16} width={44} height={32} fill="transparent" className="touch-hit" />
-              <circle cx={x} cy={y(v[k])} r={11} fill={color} stroke="var(--background)" strokeWidth={2} className="touch-knob" />
-              <text x={x} y={y(v[k]) + 4} textAnchor="middle" fill="#000" className="text-[11px] font-bold">
-                {k.toUpperCase()}
-              </text>
+              <circle cx={x} cy={y(v[k])} r={11} fill={color} className="knob-halo" />
+              <g className="knob-face">
+                <circle cx={x} cy={y(v[k])} r={11} fill={color} stroke="var(--background)" strokeWidth={2} className="touch-knob" />
+                <text x={x} y={y(v[k]) + 4} textAnchor="middle" fill="#000" className="text-[11px] font-bold">
+                  {k.toUpperCase()}
+                </text>
+              </g>
             </g>
           ))}
         </svg>

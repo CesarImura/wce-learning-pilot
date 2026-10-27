@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode, type RefObject } from "react"
 import type { Candle } from "@/lib/market"
+import { playSfx } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 
 export type Scale = {
@@ -227,22 +228,29 @@ export function useDragY(
 ) {
   const toPoint = useSvgPoint(svgRef)
   const dragging = useRef(false)
+  const [active, setActive] = useState(false)
+  const end = () => {
+    if (!dragging.current) return
+    dragging.current = false
+    setActive(false)
+    playSfx("drop")
+  }
   return {
+    "data-dragging": active || undefined,
     onPointerDown: (e: PointerEvent<SVGGElement>) => {
       if (disabled) return
       dragging.current = true
+      setActive(true)
+      navigator.vibrate?.(8)
+      playSfx("grab")
       e.currentTarget.setPointerCapture(e.pointerId)
       onY(toPoint(e).y)
     },
     onPointerMove: (e: PointerEvent<SVGGElement>) => {
       if (dragging.current) onY(toPoint(e).y)
     },
-    onPointerUp: () => {
-      dragging.current = false
-    },
-    onPointerCancel: () => {
-      dragging.current = false
-    },
+    onPointerUp: end,
+    onPointerCancel: end,
   }
 }
 
@@ -275,19 +283,23 @@ export function DragLine({
   const ink = "#000"
 
   return (
-    <g className={cn(!disabled && "cursor-ns-resize")} {...drag}>
+    <g className={cn(!disabled && "drag-knob cursor-ns-resize")} {...drag}>
       <rect x={s.left} y={y - 12} width={s.W - s.left} height={24} fill="transparent" className="touch-hit-y" />
-      <line x1={s.left} x2={s.right} y1={y} y2={y} stroke={color} strokeWidth={2} strokeDasharray={disabled ? "6 4" : undefined} />
-      <rect x={s.right + 2} y={y - 10} width={s.W - s.right - 4} height={20} rx={4} fill={color} />
-      <text x={s.right + 6} y={y + 4} fill={ink} className="text-[11px] font-semibold tabular-nums">
-        {price.toFixed(2)}
-      </text>
+      <line x1={s.left} x2={s.right} y1={y} y2={y} stroke={color} strokeWidth={2} strokeDasharray={disabled ? "6 4" : undefined} className="drag-line" />
+      <g className="knob-face knob-face-sm">
+        <rect x={s.right + 2} y={y - 10} width={s.W - s.right - 4} height={20} rx={4} fill={color} />
+        <text x={s.right + 6} y={y + 4} fill={ink} className="text-[11px] font-semibold tabular-nums">
+          {price.toFixed(2)}
+        </text>
+      </g>
       {!disabled && (
         <g transform={`translate(${s.left + 6}, ${y - 10})`}>
-          <rect width={label.length * 6.6 + 14} height={20} rx={10} fill={color} />
-          <text x={7} y={14} fill={ink} className="text-[11px] font-semibold">
-            {label}
-          </text>
+          <g className="knob-face knob-face-sm">
+            <rect width={label.length * 6.6 + 14} height={20} rx={10} fill={color} />
+            <text x={7} y={14} fill={ink} className="text-[11px] font-semibold">
+              {label}
+            </text>
+          </g>
         </g>
       )}
       {disabled && (

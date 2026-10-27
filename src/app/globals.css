@@ -210,3 +210,42 @@
   .touch-stage svg[data-k] .touch-hit-y { transform: scaleY(var(--hit-line, 1)); }
   .touch-stage svg[data-k] .touch-knob { transform: scale(var(--knob, 1)); }
 }
+
+/* Draggable handles: springy pop + glow on hover, stronger while dragging. The scaled
+   element is .knob-face (not .touch-knob, which touch-stage already scales). */
+.knob-face,
+.knob-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 180ms ease-out;
+}
+.knob-halo {
+  fill: var(--brand);
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+.drag-knob { cursor: grab; }
+.drag-knob .drag-line { transition: stroke-width 150ms ease-out; }
+@media (hover: hover) {
+  .drag-knob:hover .knob-face,
+  .drag-svg:hover .knob-face { transform: scale(1.15); }
+  .drag-knob:hover .knob-face-sm { transform: scale(1.05); }
+  .drag-knob:hover .knob-halo,
+  .drag-svg:hover .knob-halo { opacity: 0.22; transform: scale(1.7); }
+  .drag-knob:hover .drag-line { stroke-width: 3; }
+}
+.drag-knob[data-dragging="true"],
+.drag-svg[data-dragging="true"] { cursor: grabbing; }
+.drag-knob[data-dragging="true"] .knob-face,
+.drag-svg[data-dragging="true"] .knob-face { transform: scale(1.3); }
+.drag-knob[data-dragging="true"] .knob-face-sm { transform: scale(1.08); }
+.drag-knob[data-dragging="true"] .knob-halo,
+.drag-svg[data-dragging="true"] .knob-halo { opacity: 0.38; transform: scale(2.1); }
+.drag-knob[data-dragging="true"] .drag-line { stroke-width: 4; }
+@media (prefers-reduced-motion: reduce) {
+  .knob-face,
+  .knob-face-sm { transition: none; transform: none !important; }
+  .knob-halo { transition: opacity 180ms ease-out; transform: scale(1.7) !important; }
+  .drag-knob .drag-line { transition: none; }
+}

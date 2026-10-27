@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { CandleChart, useDragY, useSvgPoint } from "@/components/chart/candle-chart"
 import { fromAnchors, rng, type Candle } from "@/lib/market"
+import { playSfx } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 import { ChartFrame, Stat, fmtUsd, parseAnswer, sliderValue, useAutoAnswer, useReveal, type ExerciseProps } from "./shared"
 
@@ -233,6 +234,13 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
   const [pt, setPt] = useState({ r: 1, w: 70 })
   const [moved, setMoved] = useState(false)
   const dragging = useRef(false)
+  const [grabbed, setGrabbed] = useState(false)
+  const endDrag = () => {
+    if (!dragging.current) return
+    dragging.current = false
+    setGrabbed(false)
+    playSfx("drop")
+  }
   useAutoAnswer(autoAnswer, (v) => {
     setPt(v === "correct" ? { r: 2, w: 33 } : { r: 1, w: 70 })
     setMoved(true)
@@ -307,15 +315,20 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
         <svg
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
-          className={cn("w-full touch-none select-none", !review && "cursor-crosshair")}
+          className={cn("w-full touch-none select-none", !review && "drag-svg cursor-crosshair")}
+          data-dragging={grabbed || undefined}
           onPointerDown={(e) => {
             if (review) return
             dragging.current = true
+            setGrabbed(true)
+            navigator.vibrate?.(8)
+            playSfx("grab")
             e.currentTarget.setPointerCapture(e.pointerId)
             update(e)
           }}
           onPointerMove={(e) => dragging.current && update(e)}
-          onPointerUp={() => (dragging.current = false)}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
         >
           <path d={profitArea} className="fill-up/10" />
           <path d={lossArea} className="fill-down/10" />
@@ -353,7 +366,16 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
           )}
           <line x1={x(pt.r)} x2={x(pt.r)} y1={y(pt.w)} y2={B} stroke="var(--brand)" strokeOpacity={0.4} />
           <line x1={L} x2={x(pt.r)} y1={y(pt.w)} y2={y(pt.w)} stroke="var(--brand)" strokeOpacity={0.4} />
-          <circle cx={x(pt.r)} cy={y(pt.w)} r={10} fill="var(--brand)" stroke="#000" strokeWidth={3} />
+          {!review && <circle cx={x(pt.r)} cy={y(pt.w)} r={10} fill="var(--brand)" className="knob-halo" />}
+          <circle
+            cx={x(pt.r)}
+            cy={y(pt.w)}
+            r={10}
+            fill="var(--brand)"
+            stroke="#000"
+            strokeWidth={3}
+            className={cn(!review && "knob-face")}
+          />
         </svg>
       </ChartFrame>
       <p className="px-1 text-[13px] text-white/50">Drag the dot. Each point is a strategy: its reward-to-risk and win rate.</p>
@@ -570,12 +592,15 @@ function YieldDot({
 }) {
   const drag = useDragY(svgRef, onY, disabled)
   return (
-    <g {...drag} className={disabled ? "" : "cursor-ns-resize"}>
+    <g {...drag} className={disabled ? "" : "drag-knob"}>
       <rect x={cx - 24} y={cy - 24} width={48} height={48} fill="transparent" className="touch-hit" />
-      <circle cx={cx} cy={cy} r={9} fill="var(--brand)" stroke="#000" strokeWidth={3} className="touch-knob" />
-      <text x={cx} y={cy - 16} textAnchor="middle" className="fill-white text-[11px] font-semibold tabular-nums">
-        {label}
-      </text>
+      <circle cx={cx} cy={cy} r={9} fill="var(--brand)" className="knob-halo" />
+      <g className="knob-face">
+        <circle cx={cx} cy={cy} r={9} fill="var(--brand)" stroke="#000" strokeWidth={3} className="touch-knob" />
+        <text x={cx} y={cy - 16} textAnchor="middle" className="fill-white text-[11px] font-semibold tabular-nums">
+          {label}
+        </text>
+      </g>
     </g>
   )
 }

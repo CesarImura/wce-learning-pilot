@@ -5,7 +5,7 @@
 
 import { soundOn } from "./engagement"
 
-export type Sfx = "correct" | "wrong" | "combo" | "complete" | "streak"
+export type Sfx = "correct" | "wrong" | "combo" | "complete" | "streak" | "grab" | "drop"
 
 // Notes as [frequency Hz, start s, duration s].
 const PATTERNS: Record<Sfx, { notes: [number, number, number][]; type: OscillatorType; gain: number }> = {
@@ -18,6 +18,8 @@ const PATTERNS: Record<Sfx, { notes: [number, number, number][]; type: Oscillato
     gain: 0.14,
   },
   streak: { notes: [[392, 0, 0.12], [587, 0.1, 0.12], [784, 0.2, 0.35]], type: "sawtooth", gain: 0.07 },
+  grab: { notes: [[900, 0, 0.04]], type: "sine", gain: 0.06 },
+  drop: { notes: [[600, 0, 0.05]], type: "sine", gain: 0.05 },
 }
 
 let ctx: AudioContext | null = null
