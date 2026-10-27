@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Coin } from "@/components/coin/coin"
 import { PrintObject } from "@/components/print-objects/print-object"
 import { useCourseArt } from "@/components/prototype-panel"
@@ -8,7 +8,7 @@ import { fmtPoints, topicProgress, useProgress } from "@/lib/progress"
 import { TOPICS, type TopicId } from "@/lib/topics"
 import { cn } from "@/lib/utils"
 
-// Topic -> print object model (0 candle, 1 staircase, 2 folded floor + ball, 3 plane, 4 crystal, 5 two boxes).
+// Topic -> print object model (0 candle, 4 crystal, 6 order book ladder, 7 columns, 8 globe; 1-3 and 5 are spares).
 const PRINT_MODEL: Record<TopicId, number> = { foundations: 0, "order-flow": 6, edge: 4, institutional: 7, macro: 8 }
 
 /** A topic's coin with live progress; its reverse (in the inspector) shows lessons, units and XP. */
@@ -29,14 +29,27 @@ export function TopicCoin({
   const p = useProgress()
   const art = useCourseArt()
   const [hovered, setHovered] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
   const topic = TOPICS[topicId]
   const tp = topicProgress(topicId, p)
+  // The object wakes when its whole card or list row is hovered, not only the art itself.
+  useEffect(() => {
+    const host = ref.current?.closest<HTMLElement>("[data-print-hover], a, .glass, li") ?? ref.current
+    if (!host) return
+    const on = () => setHovered(true)
+    const off = () => setHovered(false)
+    host.addEventListener("pointerenter", on)
+    host.addEventListener("pointerleave", off)
+    return () => {
+      host.removeEventListener("pointerenter", on)
+      host.removeEventListener("pointerleave", off)
+    }
+  }, [art])
   if (art === "print")
     return (
       <div
+        ref={ref}
         style={{ width: size, height: size }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
         className={cn("relative shrink-0", tp.state === "locked" && "opacity-40", className)}
       >
         {/* A printed halftone shadow instead of a soft glow, so the object sits on the card like the print. */}
