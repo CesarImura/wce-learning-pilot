@@ -68,6 +68,11 @@ export const useBeta = betaPref.use
 type Corners = "8" | "12"
 const cornersPref = createPref<Corners>("wce-academy-corners", ["8", "12"], "12")
 
+// Lesson art on the course path: the lucide icon circles or the 3D print objects.
+type LessonArt = "icons" | "print"
+const lessonArtPref = createPref<LessonArt>("wce-lesson-art", ["icons", "print"], "print")
+export const useLessonArt = lessonArtPref.use
+
 function Segmented<T extends string>({
   label,
   value,
@@ -91,7 +96,7 @@ function Segmented<T extends string>({
             title={o.title}
             onClick={() => onChange(o.id)}
             className={cn(
-              "h-7 w-9 rounded-[4px] text-[12px] font-semibold transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
+              "h-7 min-w-9 px-1.5 rounded-[4px] text-[12px] font-semibold transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
               value === o.id ? "bg-white text-black" : "text-white/60 hover:text-white",
             )}
           >
@@ -108,6 +113,7 @@ export function HomeLayoutSwitch() {
   const layout = useHomeLayout()
   const week = useWeekCard()
   const corners = cornersPref.use()
+  const lessonArt = lessonArtPref.use()
   const paywall = usePaywallGroup()
   const beta = useBeta()
   const onHome = usePathname() === "/courses"
@@ -180,6 +186,15 @@ export function HomeLayoutSwitch() {
         options={[
           { id: "8", title: "Cards at 8px" },
           { id: "12", title: "Cards at 12px" },
+        ]}
+      />
+      <Segmented
+        label="Lesson art"
+        value={lessonArt}
+        onChange={lessonArtPref.set}
+        options={[
+          { id: "icons", title: "Icons in circles" },
+          { id: "print", title: "Print objects" },
         ]}
       />
     </div>

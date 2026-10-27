@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import {
   BookOpen,
@@ -30,6 +30,8 @@ import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
 import { CourseReward } from "./paywall"
 import { topicOf } from "@/lib/courses"
+import { PrintObject } from "@/components/print-objects/print-object"
+import { useLessonArt } from "@/components/prototype-panel"
 
 const ICONS: Record<Lesson["icon"], LucideIcon> = {
   candle: CandlestickChart,
@@ -38,6 +40,9 @@ const ICONS: Record<Lesson["icon"], LucideIcon> = {
   shield: ShieldCheck,
   sparkles: Sparkles,
 }
+
+// Lesson icon -> print object model (0 candle, 1 staircase, 2 folded floor + ball, 3 plane, 4 crystal, 5 two boxes).
+const PRINT_MODEL: Record<Lesson["icon"], number> = { candle: 0, layers: 1, sparkles: 2, target: 3, shield: 4 }
 
 // Zig-zag offsets for the lesson path.
 const OFFSETS = ["translate-x-0", "-translate-x-16", "translate-x-0", "translate-x-16"]
@@ -67,6 +72,9 @@ function LessonNode({
   started: boolean
 }) {
   const Icon = ICONS[lesson.icon]
+  const art = useLessonArt()
+  const [hovered, setHovered] = useState(false)
+  const print = art === "print"
   return (
     <div data-current={state === "current" || undefined} className={cn("flex scroll-my-32 flex-col items-center gap-3", OFFSETS[index % OFFSETS.length])}>
       {state === "current" && (
@@ -78,15 +86,32 @@ function LessonNode({
       <Link
         href={`/courses/${course.id}/${lesson.id}`}
         aria-label={lesson.title}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         className={cn(
-          "grid size-[76px] place-items-center rounded-full border shadow-[inset_0_-5px_0_rgba(0,0,0,0.3)] transition-all hover:scale-105 active:translate-y-0.5 active:shadow-none",
-          state === "done" && "border-brand/50 bg-brand/15 text-brand-pale",
-          state === "current" &&
+          print
+            ? "relative block size-[112px] rounded-[12px] border border-white/10 bg-[#0d0d0d] transition-all hover:scale-105 active:translate-y-0.5"
+            : "grid size-[76px] place-items-center rounded-full border shadow-[inset_0_-5px_0_rgba(0,0,0,0.3)] transition-all hover:scale-105 active:translate-y-0.5 active:shadow-none",
+          !print && state === "done" && "border-brand/50 bg-brand/15 text-brand-pale",
+          !print &&
+            state === "current" &&
             "border-white bg-white text-black ring-8 ring-white/10 shadow-[inset_0_-5px_0_rgba(0,0,0,0.18),0_0_40px_rgba(106,190,242,0.35)]",
-          state === "upcoming" && "border-white/10 bg-white/5 text-white/60 hover:text-white",
+          !print && state === "upcoming" && "border-white/10 bg-white/5 text-white/60 hover:text-white",
+          print && state === "done" && "border-brand/60",
+          print && state === "current" && "border-white ring-8 ring-white/10 shadow-[0_0_40px_rgba(106,190,242,0.35)]",
+          print && state === "upcoming" && "opacity-70 hover:opacity-100",
         )}
       >
-        {state === "done" ? <Check className="size-8" strokeWidth={2.5} /> : <Icon className="size-8" />}
+        {print ? (
+          <>
+            <PrintObject model={PRINT_MODEL[lesson.icon]} hovered={hovered} className="absolute inset-0" />
+            {state === "done" && (
+              <span className="absolute -right-2 -bottom-2 grid size-7 place-items-center rounded-full border-2 border-black bg-brand text-black">
+                <Check className="size-4" strokeWidth={3} />
+              </span>
+            )}
+          </>
+        ) : state === "done" ? <Check className="size-8" strokeWidth={2.5} /> : <Icon className="size-8" />}
       </Link>
       <div className="text-center">
         <p className={cn("text-[16px] font-medium", state === "upcoming" ? "text-white/70" : "text-white")}>
