@@ -43,4 +43,5 @@ Course art for Training: each course (by its topic) gets a small 3D folded-paper
 - One WebGL renderer for all cards (scissor + viewport per card). Never one canvas per lesson: browsers cap WebGL contexts at ~16.
 - Re-measure card rects every tick; a canvas sized once misses cards that lay out later.
 - `uCtr` must be the card centre in canvas pixels (WebGL y from the bottom) or the Flat prints slide off-centre.
+- Flat prints scale with the object (`uScl` = slot pixels per world unit ÷ the lab's 52px), so texture size stays proportional from a 68px list icon to the 220px banner. `tex` in the panel multiplies on top.
 - Respect `prefers-reduced-motion`: still frame, no boil.

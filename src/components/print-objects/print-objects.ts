@@ -7,14 +7,14 @@ import { get as getSettings } from "./settings"
 export const VERTEX_SHADER = `attribute vec3 fcol;attribute float fdir;attribute float ftype;varying vec3 vP;varying vec3 vON;varying vec3 vC;varying float vD;varying float vT;
 uniform float uExplode;void main(){vT=ftype;vP=position;vON=normal;vC=fcol;vD=fdir;gl_Position=projectionMatrix*modelViewMatrix*vec4(position+normal*uExplode,1.);}`
 
-export const FRAGMENT_SHADER = `uniform float uSeed,uJump,uMap,uDpr,uM,uTex;uniform vec2 uRes,uCtr;varying vec3 vP;varying vec3 vON;varying vec3 vC;varying float vD;varying float vT;
+export const FRAGMENT_SHADER = `uniform float uSeed,uJump,uMap,uDpr,uM,uTex,uScl;uniform vec2 uRes,uCtr;varying vec3 vP;varying vec3 vON;varying vec3 vC;varying float vD;varying float vT;
 float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*n2(p);p*=2.07;a*=.5;}return s;}
 float stroke(vec2 uv,vec2 c,float an,float w,float len,vec2 o){float cs=cos(an),sn=sin(an);vec2 d=uv-c;float a=d.x*cs+d.y*sn,b=-d.x*sn+d.y*cs;
 float ww=w*(1.+(fbm(vec2(a*.6,an*3.)+o*.003)-.5)*.9);float tp=smoothstep(-len,-len+.6,a)*(1.-smoothstep(len-1.2,len,a));
 float br=n2(vec2(a*.45,b*11.)+o*.05);float dry=mix(.15,.6,smoothstep(-len*.3,len,a));return step(abs(b),ww*tp)*step(dry,br);}
-void main(){vec3 N=normalize(vON);vec2 uv;vec2 uvS=(gl_FragCoord.xy/uDpr-uCtr)/40.;
+void main(){vec3 N=normalize(vON);vec2 uv;vec2 uvS=(gl_FragCoord.xy/uDpr-uCtr)/(40.*uScl);
 if(uMap<.5){uv=uvS;}
 else if(uMap>1.5){vec3 up=abs(N.y)>.9?vec3(1,0,0):vec3(0,1,0);vec3 T=normalize(cross(up,N));vec3 B=cross(N,T);uv=vec2(dot(vP,T),dot(vP,B))*2.4+vec2(vD*2.3,vD*1.1);}
 else{vec3 a=abs(N);uv=(a.y>a.x&&a.y>a.z?vP.xz:(a.x>a.z?vP.zy:vP.xy))*2.4;}
@@ -215,6 +215,7 @@ const REST_YAW: (number | undefined)[] = [0.4, 0.5, 0.3, 0.6, 0.5, 0.6, -0.45, 0
 
 type Uniforms = {
   uTex: { value: number }
+  uScl: { value: number }
   uExplode: { value: number }
   uSeed: { value: number }
   uJump: { value: number }
@@ -242,6 +243,7 @@ export function createItem(i: number, dpr: number): PrintItem {
   const d = MODELS[i]()
   const U: Uniforms = {
     uTex: { value: 0.5 },
+    uScl: { value: 1 },
     uExplode: { value: 0 },
     uSeed: { value: 0 },
     uJump: { value: 0 },
@@ -419,6 +421,9 @@ export function renderItem(
   it.U.uJump.value = cfg.jump
   it.U.uRes.value.set(o.cw, o.ch)
   it.U.uCtr.value.set(x + w / 2, y + h / 2)
+  // Flat prints scale with the object: pixels per world unit here vs the lab's 230px cards at camera size 2.2
+  // (52px per unit), so a 68px row icon and the 220px banner show the same print relative to the shape.
+  it.U.uScl.value = h / (2 * s) / (230 / (2 * 2.2))
   if (!o.advance) {
     // scroll redraw: same pose, new position
   } else if (!o.still) {
