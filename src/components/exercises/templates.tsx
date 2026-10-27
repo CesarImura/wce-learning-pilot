@@ -3,7 +3,7 @@
 // Content-driven exercise templates. Course data passes everything through
 // `step.props`, so new lessons (e.g. generated from transcripts) need no new code.
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react"
 import { ArrowDownRight, ArrowUpRight, Check, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -98,15 +98,43 @@ export function Classify({ buckets, items, explain, phase, onReady, autoAnswer }
     })
   }, [placed, pool.length, items, explain, onReady])
 
+  // FLIP: remember where a chip was before it moves, then slide it in from there once it has re-rendered.
+  const root = useRef<HTMLDivElement>(null)
+  const flip = useRef<{ label: string; rect: DOMRect } | null>(null)
+  const chipEl = (label: string) =>
+    Array.from(root.current?.querySelectorAll<HTMLElement>("[data-chip]") ?? []).find((el) => el.dataset.chip === label)
+  const remember = (label: string) => {
+    const el = chipEl(label)
+    flip.current = el ? { label, rect: el.getBoundingClientRect() } : null
+  }
+  useLayoutEffect(() => {
+    const f = flip.current
+    flip.current = null
+    if (!f || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    const el = chipEl(f.label)
+    if (!el?.animate) return
+    const now = el.getBoundingClientRect()
+    // The lesson player may zoom the question; rects are screen pixels, transforms are local.
+    const zoom = now.width / el.offsetWidth || 1
+    const dx = (f.rect.left - now.left) / zoom
+    const dy = (f.rect.top - now.top) / zoom
+    if (!dx && !dy) return
+    el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
+      duration: 250,
+      easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
+    })
+  }, [placed])
+
   function place(bucket: string) {
     if (review || !selected) return
+    remember(selected)
     const next = { ...placed, [selected]: bucket }
     setPlaced(next)
     setSelected(order.find((i) => !next[i.label])?.label ?? null)
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={root} className="space-y-4">
       <div
         // Lock the pool at its starting height so the buckets don't jump as it empties.
         ref={(el) => {
@@ -119,6 +147,7 @@ export function Classify({ buckets, items, explain, phase, onReady, autoAnswer }
             {pool.map((i) => (
               <button
                 key={i.label}
+                data-chip={i.label}
                 onClick={() => setSelected(i.label)}
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left text-[14px] transition-all",
@@ -169,9 +198,11 @@ export function Classify({ buckets, items, explain, phase, onReady, autoAnswer }
                   return (
                     <button
                       key={i.label}
+                      data-chip={i.label}
                       onClick={(e) => {
                         e.stopPropagation()
                         if (review) return
+                        remember(i.label)
                         const next = { ...placed }
                         delete next[i.label]
                         setPlaced(next)
@@ -421,9 +452,14 @@ export function Directions({
                   <button
                     key={d}
                     disabled={review}
-                    onClick={() => setPicks((p) => ({ ...p, [i]: d }))}
+                    onClick={(e) => {
+                      setPicks((p) => ({ ...p, [i]: d }))
+                      // Tiny settle on the picked button: 1 -> 1.04 -> 1.
+                      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+                        e.currentTarget.animate([{ scale: 1 }, { scale: 1.04 }, { scale: 1 }], { duration: 180, easing: "ease-out" })
+                    }}
                     className={cn(
-                      "flex h-9 items-center gap-1.5 rounded-md border px-3 text-[14px] font-medium transition-all",
+                      "flex h-9 items-center gap-1.5 rounded-md border px-3 text-[14px] font-medium transition-all enabled:active:scale-[0.96] motion-reduce:transition-none",
                       pick === d
                         ? d === "up"
                           ? "border-up bg-up/20 text-up"

@@ -15,6 +15,67 @@ function parseNum(s: string) {
   return Number.isFinite(n) ? n : null
 }
 
+// Same look as the question box, slider row and calculator panel in widgets.tsx.
+function QuestionBox({
+  id,
+  question,
+  value,
+  placeholder,
+  onChange,
+  disabled,
+  after,
+}: {
+  id: string
+  question: string
+  value: string
+  placeholder: string
+  onChange: (v: string) => void
+  disabled: boolean
+  after: string
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[8px] bg-white/10 p-4">
+      <Label htmlFor={id} className="text-[16px] leading-6 font-normal text-pretty text-white">
+        {question}
+      </Label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={id}
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder={placeholder}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-12 max-w-48 rounded-[6px] border-[#333] bg-black/40 text-[18px] tabular-nums md:text-[18px]"
+        />
+        <span className="text-[16px] text-[#9e9e9e]">{after}</span>
+      </div>
+    </div>
+  )
+}
+
+function Panel({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-5 rounded-[8px] border border-white/15 p-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-[16px] leading-5 font-medium text-white">{title}</p>
+        <p className="text-[14px] leading-5 text-pretty text-[#9e9e9e]">{hint}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function RowHead({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-[14px]">
+      <span className="font-medium">{label}</span>
+      <span className="text-white/60 tabular-nums">{value}</span>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Position sizing lab
 
@@ -46,62 +107,52 @@ export function PositionSizer({ phase, onReady }: ExerciseProps) {
   }, [answer, onReady])
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Account" value={fmtUsd(ACCOUNT)} />
-        <Stat label="At risk" value={fmtUsd(dollars)} tone="down" />
-        <Stat label="Position" value={`${lots.toFixed(2)} lots`} />
-      </div>
-      <div className="space-y-4 rounded-lg border bg-card p-4">
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Risk per trade</span>
-            <span className="tabular-nums text-muted-foreground">{risk.toFixed(2)}%</span>
+    <div className="flex flex-col gap-4">
+      <QuestionBox
+        id="ps"
+        question="Your stop is 40 pips and your broker caps you at 0.5 lots. What's the max risk %?"
+        value={answer}
+        placeholder="e.g. 1.5"
+        onChange={setAnswer}
+        disabled={review}
+        after="%"
+      />
+      <Panel title="Calculator" hint="Set the risk and the stop, then read the position size and what a losing streak does.">
+        <div className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <RowHead label="Risk per trade" value={`${risk.toFixed(2)}%`} />
+            <Slider min={0.25} max={10} step={0.25} format={(v) => `${v.toFixed(2)}%`} value={[risk]} onValueChange={(v) => setRisk(sliderValue(v))} />
           </div>
-          <Slider min={0.25} max={10} step={0.25} value={[risk]} onValueChange={(v) => setRisk(sliderValue(v))} />
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Stop distance</span>
-            <span className="tabular-nums text-muted-foreground">{pips} pips</span>
+          <div className="space-y-2">
+            <RowHead label="Stop distance" value={`${pips} pips`} />
+            <Slider min={10} max={100} step={5} format={(v) => `${v} pips`} value={[pips]} onValueChange={(v) => setPips(sliderValue(v))} />
           </div>
-          <Slider min={10} max={100} step={5} value={[pips]} onValueChange={(v) => setPips(sliderValue(v))} />
         </div>
-      </div>
-      <ChartFrame>
-        <div className="mb-2 flex items-baseline justify-between px-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            10 losses in a row
-          </span>
-          <span className={cn("text-sm font-semibold tabular-nums", risk > 3 ? "text-down" : "text-foreground")}>
-            {fmtUsd(streak[10])} left
-          </span>
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Stat label="Account" value={fmtUsd(ACCOUNT)} />
+            <Stat label="At risk" value={fmtUsd(dollars)} tone="down" />
+            <Stat label="Position" value={`${lots.toFixed(2)} lots`} />
+          </div>
+          <div className="flex flex-col gap-3 rounded-[8px] bg-white/10 p-4">
+            <div className="flex items-baseline justify-between gap-3 text-[14px]">
+              <span className="text-white/70">10 losses in a row</span>
+              <span className={cn("font-semibold tabular-nums", risk > 3 ? "text-down" : "text-white")}>
+                {fmtUsd(streak[10])} left
+              </span>
+            </div>
+            <div className="flex h-24 items-end gap-1">
+              {streak.map((v, i) => (
+                <div
+                  key={i}
+                  className={cn("flex-1 rounded-t transition-all", i === 0 ? "bg-brand" : "bg-down/70")}
+                  style={{ height: `${(v / ACCOUNT) * 100}%` }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex h-24 items-end gap-1">
-          {streak.map((v, i) => (
-            <div
-              key={i}
-              className={cn("flex-1 rounded-t transition-all", i === 0 ? "bg-brand" : "bg-down/70")}
-              style={{ height: `${(v / ACCOUNT) * 100}%` }}
-            />
-          ))}
-        </div>
-      </ChartFrame>
-      <div className="space-y-2 rounded-lg border-2 border-dashed p-4">
-        <Label htmlFor="ps">Your stop is 40 pips and your broker caps you at 0.5 lots. What&apos;s the max risk %?</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            id="ps"
-            inputMode="decimal"
-            placeholder="e.g. 1.5"
-            value={answer}
-            disabled={review}
-            onChange={(e) => setAnswer(e.target.value)}
-            className="max-w-32 text-lg"
-          />
-          <span className="text-muted-foreground">%</span>
-        </div>
-      </div>
+      </Panel>
     </div>
   )
 }
@@ -191,16 +242,15 @@ export function ExpectancyLab({ phase, onReady }: ExerciseProps) {
           </Button>
         </div>
       </ChartFrame>
-      <div className="space-y-4 rounded-lg border bg-card p-4">
+      <Panel title="Simulator" hint="Change the win rate and the reward to risk, then watch 24 traders' equity curves.">
+        <div className="flex flex-col gap-4">
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Win rate</span>
-            <span className="tabular-nums text-muted-foreground">{win}%</span>
-          </div>
+          <RowHead label="Win rate" value={`${win}%`} />
           <Slider
             min={10}
             max={90}
             step={5}
+            format={(v) => `${v}% wins`}
             value={[win]}
             disabled={review}
             onValueChange={(v) => {
@@ -210,14 +260,12 @@ export function ExpectancyLab({ phase, onReady }: ExerciseProps) {
           />
         </div>
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Reward : Risk</span>
-            <span className="tabular-nums text-muted-foreground">1 : {rr.toFixed(2)}</span>
-          </div>
+          <RowHead label="Reward : Risk" value={`1 : ${rr.toFixed(2)}`} />
           <Slider
             min={0.5}
             max={5}
             step={0.25}
+            format={(v) => `1 : ${v.toFixed(2)}`}
             value={[rr]}
             disabled={review}
             onValueChange={(v) => {
@@ -226,7 +274,8 @@ export function ExpectancyLab({ phase, onReady }: ExerciseProps) {
             }}
           />
         </div>
-      </div>
+        </div>
+      </Panel>
     </div>
   )
 }
@@ -280,6 +329,15 @@ export function TradeJournal({ phase, onReady }: ExerciseProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
       <div className="flex flex-col gap-4">
+        <QuestionBox
+          id="exp"
+          question="What is this trader's expectancy (average R per trade)?"
+          value={answer}
+          placeholder="e.g. 0.5"
+          onChange={setAnswer}
+          disabled={review}
+          after="R"
+        />
         <ChartFrame>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" onMouseLeave={() => setHover(null)}>
             <line x1={10} x2={W - 10} y1={mid} y2={mid} stroke="var(--border)" />
@@ -306,30 +364,15 @@ export function TradeJournal({ phase, onReady }: ExerciseProps) {
             )}
           </svg>
         </ChartFrame>
-        <div className="space-y-2 rounded-lg border-2 border-dashed p-4">
-          <Label htmlFor="exp">What is this trader&apos;s expectancy (average R per trade)?</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="exp"
-              inputMode="decimal"
-              placeholder="e.g. 0.5"
-              value={answer}
-              disabled={review}
-              onChange={(e) => setAnswer(e.target.value)}
-              className="max-w-32 text-lg"
-            />
-            <span className="text-muted-foreground">R</span>
-          </div>
-        </div>
       </div>
-      <div className="overflow-hidden rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
+      <div className="overflow-x-auto rounded-[8px] bg-white/10">
+        <table className="w-full text-[14px]">
+          <thead className="text-[12px] text-[#9e9e9e]">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">#</th>
-              <th className="px-3 py-2 text-left font-medium">Pair</th>
-              <th className="px-3 py-2 text-left font-medium">Side</th>
-              <th className="px-3 py-2 text-right font-medium">Result</th>
+              <th className="px-3 py-2 text-left font-normal">#</th>
+              <th className="px-3 py-2 text-left font-normal">Pair</th>
+              <th className="px-3 py-2 text-left font-normal">Side</th>
+              <th className="px-3 py-2 text-right font-normal">Result</th>
             </tr>
           </thead>
           <tbody>
@@ -338,9 +381,9 @@ export function TradeJournal({ phase, onReady }: ExerciseProps) {
                 key={i}
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
-                className={cn("border-t transition-colors", hover === i && "bg-muted/60")}
+                className={cn("border-t border-white/10 transition-colors", hover === i && "bg-white/10")}
               >
-                <td className="px-3 py-1.5 tabular-nums text-muted-foreground">{i + 1}</td>
+                <td className="px-3 py-1.5 tabular-nums text-white/60">{i + 1}</td>
                 <td className="px-3 py-1.5">{t.pair}</td>
                 <td className="px-3 py-1.5">{t.side}</td>
                 <td className={cn("px-3 py-1.5 text-right font-medium tabular-nums", t.r > 0 ? "text-up" : "text-down")}>
@@ -415,8 +458,8 @@ export function OrderBook({ phase, onReady }: ExerciseProps) {
         {/* 4 decimals: the answer (2.8 BTC, 0.02958%) would round to "0.030%" and look like it misses the limit. */}
         <Stat label="Slippage" value={`${slippage.toFixed(4)}%`} tone={slippage < limit ? "up" : "down"} />
       </div>
-      <div className="overflow-hidden rounded-lg border bg-card font-mono text-sm">
-        <div className="grid grid-cols-3 bg-muted/60 px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+      <div className="overflow-hidden rounded-[8px] bg-white/10 text-[14px] tabular-nums">
+        <div className="grid grid-cols-3 px-3 py-2 text-[12px] text-[#9e9e9e]">
           <span>Price</span>
           <span className="text-right">Size</span>
           <span className="text-right">You take</span>
@@ -433,39 +476,39 @@ export function OrderBook({ phase, onReady }: ExerciseProps) {
               />
               <span className="relative text-down">{a.price.toLocaleString()}</span>
               <span className="relative text-right">{a.size.toFixed(1)}</span>
-              <span className={cn("relative text-right", take > 0 ? "font-semibold" : "text-muted-foreground")}>
+              <span className={cn("relative text-right", take > 0 ? "font-semibold" : "text-white/60")}>
                 {take > 0 ? take.toFixed(1) : "–"}
               </span>
             </div>
           )
         })}
-        <div className="border-y bg-muted/40 px-3 py-1 text-center text-[11px] text-muted-foreground">spread 10</div>
+        <div className="border-y border-white/10 px-3 py-1 text-center text-[12px] text-[#9e9e9e]">spread 10</div>
         {BIDS.map((b) => (
           <div key={b.price} className="relative grid grid-cols-3 px-3 py-1.5 opacity-70">
             <div className="absolute inset-y-0 right-0 bg-up/10" style={{ width: `${(b.size / maxSize) * 100}%` }} />
             <span className="relative text-up">{b.price.toLocaleString()}</span>
             <span className="relative text-right">{b.size.toFixed(1)}</span>
-            <span className="relative text-right text-muted-foreground">–</span>
+            <span className="relative text-right text-white/60">–</span>
           </div>
         ))}
       </div>
-      <div className="space-y-2 rounded-lg border bg-card p-4">
-        <div className="flex justify-between text-sm">
-          <span className="font-medium">Market buy size</span>
-          <span className="tabular-nums text-muted-foreground">{size.toFixed(1)} BTC</span>
+      <Panel title="Order size" hint="Raise the size and watch the order eat through the asks above the best price.">
+        <div className="space-y-2">
+          <RowHead label="Market buy size" value={`${size.toFixed(1)} BTC`} />
+          <Slider
+            min={0.1}
+            max={6}
+            step={0.1}
+            format={(v) => `${v.toFixed(1)} BTC`}
+            value={[size]}
+            disabled={review}
+            onValueChange={(v) => {
+              setMoved(true)
+              setSize(+sliderValue(v).toFixed(1))
+            }}
+          />
         </div>
-        <Slider
-          min={0.1}
-          max={6}
-          step={0.1}
-          value={[size]}
-          disabled={review}
-          onValueChange={(v) => {
-            setMoved(true)
-            setSize(+sliderValue(v).toFixed(1))
-          }}
-        />
-      </div>
+      </Panel>
     </div>
   )
 }

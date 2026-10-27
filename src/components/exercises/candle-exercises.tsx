@@ -175,20 +175,25 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
   return (
     <div className="space-y-3">
       <ChartFrame>
-        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full touch-none select-none">
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full touch-none overflow-visible select-none">
           <TickLine ticks={ticks} upto={ticks.length} />
-          {handles.map(({ k }) => (
-            <line
-              key={k}
-              x1={LINE_L}
-              x2={CANDLE_X}
-              y1={y(v[k])}
-              y2={y(v[k])}
-              stroke="var(--muted-foreground)"
-              strokeDasharray="2 4"
-              opacity={0.7}
-            />
-          ))}
+          {handles.map(({ k }) => {
+            // The guide of the handle in hand brightens so it reads against the others.
+            const active = !review && !!drags[k]["data-dragging"]
+            return (
+              <line
+                key={k}
+                x1={LINE_L}
+                x2={CANDLE_X}
+                y1={y(v[k])}
+                y2={y(v[k])}
+                stroke={active ? "var(--foreground)" : "var(--muted-foreground)"}
+                strokeDasharray="2 4"
+                opacity={active ? 1 : 0.7}
+                className="motion-safe:transition-[opacity] motion-safe:duration-150"
+              />
+            )
+          })}
           <CandleShape {...shown} />
           {review && <CandleShape {...ohlc} x={CANDLE_X + 72} ghost />}
           {review && (
@@ -208,6 +213,21 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
               </g>
             </g>
           ))}
+          {/* Live price tag beside the dragged knob (O on the left, the rest on the right) so a finger never covers it. */}
+          {!review &&
+            handles.map(({ k, x }) => {
+              if (!drags[k]["data-dragging"]) return null
+              const w = 52
+              const tx = k === "o" ? x - 19 - w : x + 19
+              return (
+                <g key={k} pointerEvents="none">
+                  <rect x={tx} y={y(v[k]) - 10} width={w} height={20} rx={6} fill="#000" stroke="rgba(255,255,255,0.18)" />
+                  <text x={tx + w / 2} y={y(v[k]) + 4} textAnchor="middle" fill="#fff" className="text-[11px] font-medium tabular-nums">
+                    {k.toUpperCase()} {v[k].toFixed(2)}
+                  </text>
+                </g>
+              )
+            })}
         </svg>
       </ChartFrame>
       <p className="px-1 text-sm text-muted-foreground">

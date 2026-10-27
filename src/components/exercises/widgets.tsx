@@ -46,6 +46,7 @@ function SliderRow({
         min={min}
         max={max}
         step={step}
+        format={() => display}
         value={[value]}
         disabled={disabled}
         onValueChange={(v) => onChange(sliderValue(v))}
@@ -494,6 +495,8 @@ function PropFirmInsight() {
 // 4. Yield curve builder (Video 04)
 
 const MATURITIES = ["3M", "1Y", "2Y", "5Y", "10Y", "30Y"]
+/** A textbook normal curve, one yield per maturity, shown as a ghost on review. */
+const NORMAL_CURVE = [3.0, 3.3, 3.6, 4.0, 4.3, 4.6]
 
 export function YieldCurveBuilder({ phase, onReady }: ExerciseProps) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -540,6 +543,23 @@ export function YieldCurveBuilder({ phase, onReady }: ExerciseProps) {
               </text>
             </g>
           ))}
+          {review && (
+            // Textbook shape to aim for, faint and behind the learner's line.
+            <g className="animate-in fade-in duration-500 motion-reduce:animate-none" pointerEvents="none">
+              <polyline
+                points={NORMAL_CURVE.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
+                fill="none"
+                stroke="var(--muted-foreground)"
+                strokeOpacity={0.6}
+                strokeWidth={2}
+                strokeDasharray="6 5"
+                strokeLinejoin="round"
+              />
+              <text x={R} y={y(NORMAL_CURVE[5]) + 22} textAnchor="end" className="fill-white/50 text-[11px] font-semibold">
+                Normal curve
+              </text>
+            </g>
+          )}
           <polyline
             points={yields.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
             fill="none"

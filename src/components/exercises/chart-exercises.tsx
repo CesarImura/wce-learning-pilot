@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { ArrowDownRight, ArrowUpRight, Check, Hand, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
-import { CandleChart, DragLine, domainOf } from "@/components/chart/candle-chart"
+import { CandleChart, DragLine, domainOf, type Scale } from "@/components/chart/candle-chart"
 import {
   breakoutScenario,
   choppyTrend,
@@ -240,6 +240,90 @@ export function DrawSupport({ phase, onReady }: ExerciseProps) {
 // Sort the charts
 
 type Regime = "trend" | "range"
+
+/** Local extremes: a candle whose low (or high) is the most extreme within `win` candles each side. */
+function swings(candles: Candle[], kind: "low" | "high", win = 3) {
+  const out: number[] = []
+  for (let i = win; i < candles.length - win; i++) {
+    const v = kind === "low" ? candles[i].l : candles[i].h
+    let ok = true
+    for (let k = i - win; k <= i + win && ok; k++) {
+      if (k !== i && (kind === "low" ? candles[k].l < v : candles[k].h > v)) ok = false
+    }
+    if (ok) out.push(i)
+  }
+  return out
+}
+
+/** Swings that keep stepping the same way (rising lows / falling highs), thinned to at most three. */
+function trendSwings(candles: Candle[], up: boolean) {
+  const kind = up ? "low" : "high"
+  const val = (i: number) => (up ? candles[i].l : candles[i].h)
+  const stepping: number[] = []
+  for (const i of swings(candles, kind)) {
+    const prev = stepping[stepping.length - 1]
+    if (prev === undefined || (up ? val(i) > val(prev) : val(i) < val(prev))) stepping.push(i)
+  }
+  if (stepping.length <= 3) return stepping
+  return [stepping[0], stepping[Math.floor(stepping.length / 2)], stepping[stepping.length - 1]]
+}
+
+/** Calm review annotation for one mini chart: a trend line through the swings, or the range band. */
+function RegimeWhy({ s, candles, regime }: { s: Scale; candles: Candle[]; regime: Regime }) {
+  // Fades in on mount (tw-animate-css); motion-reduce shows it at once.
+  const fade = "animate-in fade-in duration-500 motion-reduce:animate-none"
+  if (regime === "range") {
+    const lows = swings(candles, "low").map((i) => candles[i].l)
+    const highs = swings(candles, "high").map((i) => candles[i].h)
+    if (!lows.length || !highs.length) return null
+    const avg = (a: number[]) => a.reduce((n, v) => n + v, 0) / a.length
+    const top = s.y(avg(highs))
+    const bottom = s.y(avg(lows))
+    return (
+      <g className={fade} pointerEvents="none">
+        <rect x={s.left} y={top} width={s.right - s.left} height={bottom - top} className="fill-brand/10" />
+        <line x1={s.left} x2={s.right} y1={top} y2={top} strokeDasharray="4 3" className="stroke-brand/70" />
+        <line x1={s.left} x2={s.right} y1={bottom} y2={bottom} strokeDasharray="4 3" className="stroke-brand/70" />
+        <text x={s.left + 6} y={top + 15} className="fill-brand text-[13px] font-semibold">
+          Range
+        </text>
+      </g>
+    )
+  }
+  const up = candles[candles.length - 1].c > candles[0].c
+  const pts = trendSwings(candles, up)
+  if (pts.length < 2) return null
+  const val = (i: number) => (up ? candles[i].l : candles[i].h)
+  const first = pts[0]
+  const last = pts[pts.length - 1]
+  const clampY = (v: number) => Math.min(s.bottom - 9, Math.max(s.top + 9, v))
+  return (
+    <g className={fade} pointerEvents="none">
+      <line
+        x1={s.x(first)}
+        x2={s.x(last)}
+        y1={s.y(val(first))}
+        y2={s.y(val(last))}
+        strokeWidth={1.5}
+        strokeDasharray="5 3"
+        className={up ? "stroke-up" : "stroke-down"}
+      />
+      {pts.map((i) => (
+        <g key={i}>
+          <circle cx={s.x(i)} cy={s.y(val(i))} r={3} className={up ? "fill-up" : "fill-down"} />
+          <text
+            x={s.x(i)}
+            y={clampY(s.y(val(i)) + (up ? 16 : -9))}
+            textAnchor="middle"
+            className={cn("text-[13px] font-semibold", up ? "fill-up" : "fill-down")}
+          >
+            {up ? "HL" : "LH"}
+          </text>
+        </g>
+      ))}
+    </g>
+  )
+}
 const SORT_ITEMS: { id: string; regime: Regime; make: () => ReturnType<typeof rangingSeries> }[] = [
   { id: "A", regime: "range", make: () => rangingSeries(3) },
   { id: "B", regime: "trend", make: () => trendingSeries(5, true) },
@@ -281,7 +365,9 @@ export function SortCharts({ phase, onReady }: ExerciseProps) {
               <span className="text-xs font-semibold text-muted-foreground">Chart {s.id}</span>
               {review && <Badge variant="outline">{s.regime === "trend" ? "Trending" : "Ranging"}</Badge>}
             </div>
-            <CandleChart candles={s.candles} width={300} height={150} axis={false} />
+            <CandleChart candles={s.candles} width={300} height={150} axis={false}>
+              {(sc) => review && <RegimeWhy s={sc} candles={s.candles} regime={s.regime} />}
+            </CandleChart>
             <div className="mt-2 grid grid-cols-2 gap-1.5">
               {(["trend", "range"] as Regime[]).map((r) => (
                 <button
@@ -383,6 +469,7 @@ export function MaTuner({ phase, onReady }: ExerciseProps) {
           min={3}
           max={40}
           step={1}
+          format={(v) => `${v}-period`}
           value={[period]}
           disabled={review}
           onValueChange={(v) => {
@@ -454,6 +541,32 @@ export function PredictFakeout({ phase, onReady }: ExerciseProps) {
               <text x={s.left + 4} y={s.y(resistance) - 6} className="fill-down text-[11px] font-semibold">
                 Resistance 108
               </text>
+              {review && (
+                // Both labels hang off the fakeout candle; the wick label sits above the wick, the close
+                // label below the close, each right-aligned to the candle so they stay inside the chart.
+                <g className="animate-in fade-in duration-500 motion-reduce:animate-none" pointerEvents="none">
+                  <circle cx={s.x(visible - 1)} cy={s.y(candles[visible - 1].c)} r={4.5} className="fill-brand stroke-card" strokeWidth={1.5} />
+                  <text
+                    x={Math.min(s.right, s.x(visible - 1) + 8)}
+                    y={Math.max(s.top + 10, s.y(candles[visible - 1].h) - 8)}
+                    textAnchor="end"
+                    className="fill-down text-[11px] font-semibold"
+                  >
+                    Wick above 108
+                  </text>
+                  <text
+                    // Left of the dot, level with it, so it never runs over the fakeout candle itself.
+                    x={s.x(visible - 1) - 10}
+                    y={s.y(candles[visible - 1].c) + 4}
+                    textAnchor="end"
+                    strokeWidth={3}
+                    strokeLinejoin="round"
+                    className="fill-brand stroke-card text-[11px] font-semibold [paint-order:stroke]"
+                  >
+                    Closed back inside
+                  </text>
+                </g>
+              )}
               {!review && (
                 <rect
                   x={s.x(visible) - s.bw}

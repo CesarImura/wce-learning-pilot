@@ -702,7 +702,7 @@ export function LessonPlayer({
                     {isRetry && !feedback && (
                       <p className="text-[14px] text-white/55">You missed this one earlier. Give it another go.</p>
                     )}
-                    <HelpPanel key={`${attempt}-${index}`} hint={step.help?.hint ?? (step.props as { hint?: string } | undefined)?.hint} links={step.help?.links} watch={watch} />
+                    <HelpPanel key={`${attempt}-${index}`} defaultOpen={isRetry} hint={step.help?.hint ?? (step.props as { hint?: string } | undefined)?.hint} links={step.help?.links} watch={watch} />
                   </div>
                 )}
 
@@ -778,7 +778,8 @@ export function LessonPlayer({
                     Start over
                   </button>
                   {/* Start over sits on the left, away from Check, so the two aren't mixed up. */}
-                  <button onClick={check} className={cn(lessonButton, "flex-1 bg-white text-black hover:bg-white/90 md:ml-auto md:w-[200px] md:flex-none")}>
+                  {/* Pops in when the answer is complete, so it's clear the learner can check now. */}
+                  <button onClick={check} className={cn(lessonButton, "flex-1 bg-white text-black hover:bg-white/90 motion-safe:animate-in motion-safe:zoom-in-95 motion-safe:fade-in motion-safe:duration-200 md:ml-auto md:w-[200px] md:flex-none")}>
                     Check
                   </button>
                 </>
@@ -845,12 +846,15 @@ function HelpPanel({
   hint,
   links,
   watch,
+  defaultOpen = false,
 }: {
   hint?: string
   links?: ReadLink[]
   watch?: WatchLink
+  /** Open on a second try: the nudge is most useful right after a miss. */
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   if (!hint && !links?.length && !watch) return null
   return (
     <div className="flex flex-col gap-3">

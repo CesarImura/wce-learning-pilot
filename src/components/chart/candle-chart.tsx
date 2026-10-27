@@ -86,6 +86,15 @@ function niceTicks(min: number, max: number, count = 5) {
   return out
 }
 
+/** Spring-in for a newly highlighted candle (stable ref so it only runs on mount). */
+function springIn(el: SVGRectElement | null) {
+  if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  el.animate(
+    [{ transform: "scale(0.85)" }, { transform: "scale(1.06)", offset: 0.6 }, { transform: "scale(1)" }],
+    { duration: 200, easing: "ease-out" },
+  )
+}
+
 type Props = {
   candles: Candle[]
   /** Only the first `visible` candles are drawn; the scale still uses all of them so a reveal doesn't jump. */
@@ -146,20 +155,55 @@ export function CandleChart({
   const toPoint = useSvgPoint(ref)
   const [preview, setPreview] = useState<number | null>(null)
   const nearest = (e: { clientX: number; clientY: number }) => Math.min(visible - 1, Math.max(0, s.index(toPoint(e).x)))
+  // Touch only: tells a tap or horizontal slide (pick) apart from a vertical swipe
+  // (the browser scrolls the page; we must not pick on release).
+  const gesture = useRef<{ x: number; y: number; mode: "pending" | "scrub" | "scroll" } | null>(null)
   const scrub = onCandleClick
     ? {
         onPointerDown: (e: PointerEvent<SVGSVGElement>) => {
-          e.currentTarget.setPointerCapture(e.pointerId)
+          if (e.pointerType === "touch") {
+            gesture.current = { x: e.clientX, y: e.clientY, mode: "pending" }
+          } else {
+            gesture.current = null
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId)
+            } catch {}
+          }
           setPreview(nearest(e))
         },
         onPointerMove: (e: PointerEvent<SVGSVGElement>) => {
+          const g = gesture.current
+          if (e.pointerType === "touch" && g) {
+            if (g.mode === "scroll") return
+            if (g.mode === "pending") {
+              const dx = Math.abs(e.clientX - g.x)
+              const dy = Math.abs(e.clientY - g.y)
+              if (dy > 10 && dy > dx) {
+                g.mode = "scroll"
+                setPreview(null)
+                return
+              }
+              if (dx > 10) {
+                g.mode = "scrub"
+                // Capture only once it is a horizontal slide: earlier it can block page scroll.
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId)
+                } catch {}
+              }
+            }
+          }
           if (preview !== null) setPreview(nearest(e))
         },
         onPointerUp: () => {
-          if (preview !== null) onCandleClick(preview)
+          const scrolled = gesture.current?.mode === "scroll"
+          gesture.current = null
+          if (!scrolled && preview !== null) onCandleClick(preview)
           setPreview(null)
         },
-        onPointerCancel: () => setPreview(null),
+        onPointerCancel: () => {
+          gesture.current = null
+          setPreview(null)
+        },
       }
     : {}
   const step = (s.right - s.left) / candles.length
@@ -168,7 +212,7 @@ export function CandleChart({
     <svg
       ref={ref}
       viewBox={`0 0 ${W} ${H}`}
-      className={cn("w-full select-none touch-none", onCandleClick && "cursor-pointer", className)}
+      className={cn("w-full select-none", onCandleClick ? "cursor-pointer touch-pan-y" : "touch-none", className)}
       role="img"
       {...scrub}
     >
@@ -194,9 +238,11 @@ export function CandleChart({
         const top = s.y(Math.max(c.o, c.c))
         const bodyH = Math.max(1, Math.abs(s.y(c.o) - s.y(c.c)))
         return (
-          <g key={i}>
+          <g key={i} style={{ opacity: preview !== null && preview !== i ? 0.55 : 1, transition: "opacity 120ms" }}>
             {hl && (
               <rect
+                ref={springIn}
+                style={{ transformBox: "fill-box", transformOrigin: "center" }}
                 x={s.x(i) - s.bw}
                 y={s.y(c.h) - 8}
                 width={s.bw * 2}
@@ -211,7 +257,16 @@ export function CandleChart({
               />
             )}
             <line x1={s.x(i)} x2={s.x(i)} y1={s.y(c.h)} y2={s.y(c.l)} stroke={color} strokeWidth={1.2} />
-            <rect x={s.x(i) - s.bw / 2} y={top} width={s.bw} height={bodyH} fill={color} rx={1} />
+            <rect
+              x={s.x(i) - (hl ? s.bw * 0.6 : s.bw / 2)}
+              y={top}
+              width={hl ? s.bw * 1.2 : s.bw}
+              height={bodyH}
+              fill={color}
+              rx={1}
+              // Highlighted candles sit slightly wider with a soft glow so a pick feels lifted.
+              style={hl ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
+            />
           </g>
         )
       })}
