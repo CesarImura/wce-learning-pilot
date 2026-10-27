@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
+import { get as getSettings } from "./settings"
 import { MODEL_COUNT, createItem, renderItem, type PrintItem } from "./print-objects"
 
 type Slot = { el: HTMLElement; item: PrintItem; hovered: boolean }
 
-const STEP_MS = 83 // ~12 fps, stepped on purpose
 const slots = new Set<Slot>()
 let shared: { rd: THREE.WebGLRenderer; canvas: HTMLCanvasElement; dpr: number; stop: () => void; w: number; h: number } | null = null
 
@@ -56,7 +56,7 @@ function ensureRenderer() {
 
   const loop = (t: number) => {
     raf = requestAnimationFrame(loop)
-    if (t - last >= STEP_MS) {
+    if (t - last >= 1000 / getSettings().fps) {
       last = t
       tick++
       dirty = false

@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { get as getSettings } from "./settings"
 
 // Ported from public/lab/print-objects.html (three r128 -> 0.180). Settings are locked:
 // Flat texture, 3-drawing boil, texture size 0.5, no jump.
@@ -308,13 +309,18 @@ export function renderItem(
   Object.assign(it.cam, { left: (-s * a * W) / w, right: (s * a * W) / w, top: c + (s * H) / h, bottom: c - (s * H) / h })
   it.cam.updateProjectionMatrix()
   // Textures boil slower than the motion: a new drawing every 3rd tick (~4 per second).
-  it.U.uSeed.value = o.still ? 1 : (Math.floor(o.tick / 3) % 3) + 1
+  const cfg = getSettings()
+  const step = Math.floor(o.tick / Math.max(1, Math.round(cfg.boilEvery)))
+  it.U.uSeed.value = o.still || cfg.boil === "off" ? 1 : cfg.boil === "random" ? step + 1 : (step % 3) + 1
+  it.U.uMap.value = cfg.map
+  it.U.uTex.value = cfg.tex
+  it.U.uJump.value = cfg.jump
   it.U.uRes.value.set(o.cw, o.ch)
   it.U.uCtr.value.set(x + w / 2, y + h / 2)
   if (!o.advance) {
     // scroll redraw: same pose, new position
   } else if (!o.still) {
-    it.yaw += 0.05
+    it.yaw += cfg.spin
     if (o.hovered) {
       if (!it.hs) it.hs = performance.now()
       ANIM[it.index](it, (performance.now() - it.hs) / 1000)

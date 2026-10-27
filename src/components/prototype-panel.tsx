@@ -2,9 +2,14 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { usePathname } from "next/navigation"
-import { SlidersHorizontal, X } from "lucide-react"
+import { ChevronDown, ChevronUp, SlidersHorizontal, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COOLDOWN_DAYS, resetPaywallState } from "@/components/wce/paywall"
+import {
+  reset as resetPrint,
+  set as setPrint,
+  usePrintSettings,
+} from "@/components/print-objects/settings"
 
 export type Layout = "v1" | "v2"
 export type PreviewMode = "default" | "wrong" | "right"
@@ -73,6 +78,56 @@ type CourseArt = "coins" | "print"
 const courseArtPref = createPref<CourseArt>("wce-course-art", ["coins", "print"], "print")
 export const useCourseArt = courseArtPref.use
 
+// Prototype panel itself: collapsed to its header, and the 3D assets section inside it.
+const panelPref = createPref<"open" | "closed">("wce-proto-panel", ["open", "closed"], "open")
+const threeDPref = createPref<"open" | "closed">("wce-proto-3d", ["open", "closed"], "closed")
+
+function Slider({
+  id,
+  label,
+  value,
+  min,
+  max,
+  step,
+  format,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  format?: (v: number) => string
+  onChange: (v: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label
+        htmlFor={id}
+        className="w-[62px] shrink-0 text-[12px] whitespace-nowrap text-[#9e9e9e]"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        aria-label={label}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ accentColor: "#6abef2" }}
+        className="h-7 min-w-0 flex-1"
+      />
+      <span className="w-9 shrink-0 text-right text-[12px] text-white/80 tabular-nums">
+        {format ? format(value) : value}
+      </span>
+    </div>
+  )
+}
+
 function Segmented<T extends string>({
   label,
   value,
@@ -81,13 +136,18 @@ function Segmented<T extends string>({
 }: {
   label: string
   value: T
-  options: { id: T; title: string }[]
+  options: { id: T; title: string; label?: string }[]
   onChange: (value: T) => void
 }) {
   return (
     <div role="radiogroup" aria-label={label} className="flex items-center justify-between gap-3">
       <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">{label}</span>
-      <div className="grid grid-cols-2 gap-0.5 rounded-[6px] bg-black/40 p-0.5">
+      <div
+        style={{
+          gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
+        }}
+        className="grid gap-0.5 rounded-[6px] bg-black/40 p-0.5"
+      >
         {options.map((o) => (
           <button
             key={o.id}
@@ -100,7 +160,7 @@ function Segmented<T extends string>({
               value === o.id ? "bg-white text-black" : "text-white/60 hover:text-white",
             )}
           >
-            {o.id}
+            {o.label ?? o.id}
           </button>
         ))}
       </div>
@@ -116,6 +176,10 @@ export function HomeLayoutSwitch() {
   const courseArt = courseArtPref.use()
   const paywall = usePaywallGroup()
   const beta = useBeta()
+  const panel = panelPref.use()
+  const threeD = threeDPref.use()
+  const print = usePrintSettings()
+  const open = panel === "open"
   const onHome = usePathname() === "/courses"
   useEffect(() => {
     document.documentElement.dataset.corners = corners
@@ -124,79 +188,200 @@ export function HomeLayoutSwitch() {
     <div
       aria-label="Prototype versions"
       className={cn(
-        "fixed left-3 z-40 flex w-[184px] flex-col gap-1 rounded-[8px] border border-white/10 bg-[#1a1a1a]/95 py-1.5 pr-1.5 pl-3 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur md:bottom-4 md:left-4",
+        "fixed left-3 z-40 flex flex-col rounded-[8px] border border-white/10 bg-[#1a1a1a]/95 py-1.5 pr-1.5 pl-3 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur md:bottom-4 md:left-4",
         // v1 has a bottom tab bar on phones; sit above it.
         layout === "v1" ? "bottom-[84px]" : "bottom-4",
       )}
     >
-      <Segmented
-        label="Layout"
-        value={layout}
-        onChange={setHomeLayout}
-        options={[
-          { id: "v1", title: "One page per section" },
-          { id: "v2", title: "One home with a bit of everything" },
-        ]}
-      />
-      {layout === "v2" && onHome && (
-        <Segmented
-          label="Week card"
-          value={week}
-          onChange={weekPref.set}
-          options={[
-            { id: "v1", title: "First take of the week card" },
-            { id: "v2", title: "Streak line and days share one box" },
-          ]}
-        />
-      )}
-      <Segmented
-        label="Paywall"
-        value={paywall}
-        onChange={paywallPref.set}
-        options={[
-          { id: "A", title: "Group A: control, Training always free" },
-          { id: "B", title: "Group B: fake door paywall" },
-        ]}
-      />
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">Paywall rules</span>
+      <div className={cn("flex items-center justify-between gap-3", open && "w-[184px]")}>
+        <span className="text-[11px] text-[#9e9e9e]">Prototype</span>
         <button
-          onClick={resetPaywallState}
-          title={`Start over as a first session: no cooldown (${COOLDOWN_DAYS} days after a close), no owed paywall`}
-          className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+          onClick={() => panelPref.set(open ? "closed" : "open")}
+          aria-expanded={open}
+          aria-label={open ? "Collapse prototype panel" : "Expand prototype panel"}
+          className="grid size-7 place-items-center rounded-[4px] text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
         >
-          Reset
+          {open ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
         </button>
       </div>
-      {onHome && (
-        <Segmented
-          label="Beta"
-          value={beta}
-          onChange={betaPref.set}
-          options={[
-            { id: "in", title: "In the closed beta" },
-            { id: "out", title: "Outside the beta: waitlist" },
-          ]}
-        />
+      {open && (
+        <div className="flex max-h-[calc(100dvh-5rem)] w-[184px] flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Segmented
+            label="Layout"
+            value={layout}
+            onChange={setHomeLayout}
+            options={[
+              { id: "v1", title: "One page per section" },
+              { id: "v2", title: "One home with a bit of everything" },
+            ]}
+          />
+          {layout === "v2" && onHome && (
+            <Segmented
+              label="Week card"
+              value={week}
+              onChange={weekPref.set}
+              options={[
+                { id: "v1", title: "First take of the week card" },
+                { id: "v2", title: "Streak line and days share one box" },
+              ]}
+            />
+          )}
+          <Segmented
+            label="Paywall"
+            value={paywall}
+            onChange={paywallPref.set}
+            options={[
+              { id: "A", title: "Group A: control, Training always free" },
+              { id: "B", title: "Group B: fake door paywall" },
+            ]}
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">Paywall rules</span>
+            <button
+              onClick={resetPaywallState}
+              title={`Start over as a first session: no cooldown (${COOLDOWN_DAYS} days after a close), no owed paywall`}
+              className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+            >
+              Reset
+            </button>
+          </div>
+          {onHome && (
+            <Segmented
+              label="Beta"
+              value={beta}
+              onChange={betaPref.set}
+              options={[
+                { id: "in", title: "In the closed beta" },
+                { id: "out", title: "Outside the beta: waitlist" },
+              ]}
+            />
+          )}
+          <Segmented
+            label="Corners"
+            value={corners}
+            onChange={cornersPref.set}
+            options={[
+              { id: "8", title: "Cards at 8px" },
+              { id: "12", title: "Cards at 12px" },
+            ]}
+          />
+          <Segmented
+            label="Course art"
+            value={courseArt}
+            onChange={courseArtPref.set}
+            options={[
+              { id: "coins", title: "Metal coins" },
+              { id: "print", title: "Print objects" },
+            ]}
+          />
+          {courseArt === "print" && (
+            <>
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <span className="text-[11px] text-[#9e9e9e]">3D assets</span>
+                <div className="flex items-center">
+                  {threeD === "open" && (
+                    <button
+                      onClick={resetPrint}
+                      className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    onClick={() => threeDPref.set(threeD === "open" ? "closed" : "open")}
+                    aria-expanded={threeD === "open"}
+                    aria-label={threeD === "open" ? "Collapse 3D assets" : "Expand 3D assets"}
+                    className="grid size-7 place-items-center rounded-[4px] text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+                  >
+                    {threeD === "open" ? (
+                      <ChevronUp className="size-4" />
+                    ) : (
+                      <ChevronDown className="size-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              {threeD === "open" && (
+                <>
+                  <Segmented
+                    label="Texture"
+                    value={String(print.map) as "0" | "1" | "2"}
+                    onChange={(v) => setPrint({ map: Number(v) as 0 | 1 | 2 })}
+                    options={[
+                      { id: "0", label: "Flat", title: "Flat on screen" },
+                      { id: "1", label: "Wrap", title: "Wrapped on object" },
+                      { id: "2", label: "Face", title: "Per face" },
+                    ]}
+                  />
+                  <Segmented
+                    label="Boil"
+                    value={print.boil}
+                    onChange={(v) => setPrint({ boil: v })}
+                    options={[
+                      { id: "3", label: "3", title: "3 drawings" },
+                      {
+                        id: "random",
+                        label: "Rnd",
+                        title: "Random: a new drawing every step",
+                      },
+                      { id: "off", label: "Off", title: "No boil" },
+                    ]}
+                  />
+                  <Slider
+                    id="print-boil-every"
+                    label="Boil speed"
+                    value={print.boilEvery}
+                    min={1}
+                    max={6}
+                    step={1}
+                    format={(v) => `/${v}f`}
+                    onChange={(v) => setPrint({ boilEvery: v })}
+                  />
+                  <Slider
+                    id="print-tex"
+                    label="Tex size"
+                    value={print.tex}
+                    min={0.3}
+                    max={2}
+                    step={0.05}
+                    format={(v) => v.toFixed(2)}
+                    onChange={(v) => setPrint({ tex: v })}
+                  />
+                  <Slider
+                    id="print-jump"
+                    label="Jump"
+                    value={print.jump}
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    format={(v) => v.toFixed(2)}
+                    onChange={(v) => setPrint({ jump: v })}
+                  />
+                  <Slider
+                    id="print-fps"
+                    label="FPS"
+                    value={print.fps}
+                    min={6}
+                    max={24}
+                    step={1}
+                    onChange={(v) => setPrint({ fps: v })}
+                  />
+                  <Slider
+                    id="print-spin"
+                    label="Spin"
+                    value={print.spin}
+                    min={0}
+                    max={0.15}
+                    step={0.005}
+                    format={(v) => v.toFixed(3)}
+                    onChange={(v) => setPrint({ spin: v })}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </div>
       )}
-      <Segmented
-        label="Corners"
-        value={corners}
-        onChange={cornersPref.set}
-        options={[
-          { id: "8", title: "Cards at 8px" },
-          { id: "12", title: "Cards at 12px" },
-        ]}
-      />
-      <Segmented
-        label="Course art"
-        value={courseArt}
-        onChange={courseArtPref.set}
-        options={[
-          { id: "coins", title: "Metal coins" },
-          { id: "print", title: "Print objects" },
-        ]}
-      />
     </div>
   )
 }
