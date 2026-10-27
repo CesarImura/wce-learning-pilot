@@ -9,7 +9,7 @@ Course art for Training: each course (by its topic) gets a small 3D folded-paper
 
 ## Where things live
 - `public/lab/print-objects.html` — standalone lab with every model and tuning controls (served at `/lab/print-objects.html`). It is the reference for the look: port from it, don't drift.
-- `src/components/print-objects/print-objects.ts` (shader, models, animations) and `print-object.tsx` (shared renderer + `<PrintObject model hovered />`), plus the "Course art" toggle (coins / print) in `src/components/prototype-panel.tsx`. `src/components/wce/topic-coin.tsx` swaps the coin for `<PrintObject>` and maps topic → model (foundations candle, order-flow staircase, edge crystal, institutional boxes, macro plane). Lessons keep their icons.
+- `src/components/print-objects/print-objects.ts` (shader, models, animations) and `print-object.tsx` (shared renderer + `<PrintObject model hovered />`), plus the "Course art" toggle (coins / print) in `src/components/prototype-panel.tsx`. `src/components/wce/topic-coin.tsx` swaps the coin for `<PrintObject>` and maps topic → model (foundations candle, order-flow order book ladder, edge crystal, institutional columns, macro faceted globe; staircase, folded floor, plane and boxes are spares). Lessons keep their icons.
 - Shared lab for people without the repo: https://claude.ai/artifact/PG3VpC2UgMVjYJoMWRiKAV (ask Cesar for access).
 
 ## The locked look (26 Oct 2026, Cesar)
@@ -20,7 +20,8 @@ Course art for Training: each course (by its topic) gets a small 3D folded-paper
 | Texture size | 0.5 (finer than the lab's 1.0 start) | `uTex = 0.5` |
 | Jump | 0 (prints re-roll their grain but do not shift) | `uJump = 0` |
 | Cards | Dark WCE cards `#0d0d0d`, hairline `white/10` border |  |
-| Motion | Stepped at ~12 fps (render only every 83 ms), slow yaw, hover plays the model's animation | |
+| Motion | Still (one fixed print, 3/4 resting angle) until hovered; hover brings spin, boil and the model's gesture. Only the page's hero object (`<PrintObject active>`, the Continue banner) moves without hover. Stepped at ~12 fps | |
+| Live tuning | Prototype panel → 3D assets (texture, boil, speed, size, jump, fps, spin), stored under `wce-print-settings` | `settings.ts` |
 
 ## Rules of the style (why it looks printed, not plastic)
 1. **No lighting.** Faces are flat inks. Form comes from which ink each face gets, never from a light. No rim light, no gradients.

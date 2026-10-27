@@ -5,7 +5,7 @@ import * as THREE from "three"
 import { get as getSettings } from "./settings"
 import { MODEL_COUNT, createItem, renderItem, type PrintItem } from "./print-objects"
 
-type Slot = { el: HTMLElement; item: PrintItem; hovered: boolean }
+type Slot = { el: HTMLElement; item: PrintItem; hovered: boolean; active: boolean }
 
 const slots = new Set<Slot>()
 let shared: { rd: THREE.WebGLRenderer; canvas: HTMLCanvasElement; dpr: number; stop: () => void; w: number; h: number } | null = null
@@ -50,7 +50,7 @@ function ensureRenderer() {
     slots.forEach((slot) => {
       const r = slot.el.getBoundingClientRect()
       if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > ih || r.right < 0 || r.left > iw) return
-      renderItem(rd, slot.item, { x: r.left, y: ih - r.bottom, w: r.width, h: r.height, cw: iw, ch: ih, tick, t, hovered: slot.hovered, still, advance })
+      renderItem(rd, slot.item, { x: r.left, y: ih - r.bottom, w: r.width, h: r.height, cw: iw, ch: ih, tick, t, hovered: slot.hovered, still: still || (!slot.hovered && !slot.active), advance })
     })
   }
 
@@ -87,7 +87,7 @@ function ensureRenderer() {
 
 function register(el: HTMLElement, model: number) {
   const s = ensureRenderer()
-  const slot: Slot = { el, item: createItem(model, s.dpr), hovered: false }
+  const slot: Slot = { el, item: createItem(model, s.dpr), hovered: false, active: false }
   slots.add(slot)
   return {
     slot,
@@ -103,7 +103,18 @@ function register(el: HTMLElement, model: number) {
 }
 
 /** A 3D folded-paper topic object drawn with the print shader on one shared full-screen canvas. */
-export function PrintObject({ model, hovered = false, className }: { model: number; hovered?: boolean; className?: string }) {
+/** Still (one fixed print) until hovered; `active` keeps it spinning and boiling, for the one hero object on a page. */
+export function PrintObject({
+  model,
+  hovered = false,
+  active = false,
+  className,
+}: {
+  model: number
+  hovered?: boolean
+  active?: boolean
+  className?: string
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const slotRef = useRef<Slot | null>(null)
   const m = ((model % MODEL_COUNT) + MODEL_COUNT) % MODEL_COUNT
@@ -120,8 +131,11 @@ export function PrintObject({ model, hovered = false, className }: { model: numb
   }, [m])
 
   useEffect(() => {
-    if (slotRef.current) slotRef.current.hovered = hovered
-  }, [hovered, m])
+    if (slotRef.current) {
+      slotRef.current.hovered = hovered
+      slotRef.current.active = active
+    }
+  }, [hovered, active, m])
 
   return <div ref={ref} aria-hidden className={className} />
 }

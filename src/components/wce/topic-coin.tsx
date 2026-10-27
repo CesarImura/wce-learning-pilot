@@ -16,11 +16,14 @@ export function TopicCoin({
   topicId,
   size,
   float,
+  active,
   className,
 }: {
   topicId: TopicId
   size: number
   float?: boolean
+  /** Print art only: keep the object moving without hover (the page's hero object). */
+  active?: boolean
   className?: string
 }) {
   const p = useProgress()
@@ -46,7 +49,7 @@ export function TopicCoin({
             maskImage: "radial-gradient(closest-side, #000 35%, transparent)",
           }}
         />
-        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered} className="absolute inset-0" />
+        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered} active={active} className="absolute inset-0" />
       </div>
     )
   return (

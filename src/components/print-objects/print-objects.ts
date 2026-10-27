@@ -209,6 +209,10 @@ const MODELS: (() => ModelDef)[] = [
 
 export const MODEL_COUNT = MODELS.length
 
+// Objects stand still until hovered, so each starts at a 3/4 angle that shows its shape (the columns side by side,
+// both sides of the order book). Index = model.
+const REST_YAW: (number | undefined)[] = [0.4, 0.5, 0.3, 0.6, 0.5, 0.6, -0.45, 0.35, 0.5]
+
 type Uniforms = {
   uTex: { value: number }
   uExplode: { value: number }
@@ -276,7 +280,7 @@ export function createItem(i: number, dpr: number): PrintItem {
   cam.position.set(3.2, 2.2, 5)
   cam.lookAt(0, 0, 0)
   return {
-    U, grp, sc, cam, ms, yaw: i * 0.7, fold: 0, hs: 0, index: i,
+    U, grp, sc, cam, ms, yaw: REST_YAW[i] ?? i * 0.7, fold: 0, hs: 0, index: i,
     dispose: () => {
       geos.forEach((g) => g.dispose())
       mat.dispose()
