@@ -24,6 +24,8 @@ function ensureRenderer() {
   rd.setPixelRatio(dpr)
   rd.setScissorTest(true)
   rd.setClearColor(0x000000, 0)
+  // Each slot's bleed overlaps its neighbours, so the frame is cleared once in draw(), not per slot.
+  rd.autoClear = false
 
   let last = 0
   let tick = 0

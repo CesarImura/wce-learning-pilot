@@ -292,12 +292,19 @@ export function renderItem(
   o: { x: number; y: number; w: number; h: number; cw: number; ch: number; tick: number; t: number; hovered: boolean; still: boolean; advance: boolean },
 ) {
   const { x, y, w, h } = o
-  rd.setViewport(x, y, w, h)
-  rd.setScissor(x, y, w, h)
-  // Course art slots replace the coins: no label above, so frame tight and nearly centred, with room for hover gestures.
+  // No crop: draw into a viewport that bleeds well past the slot, so tall objects and hover gestures
+  // (the plane's flight, the crystal's shatter) can spill over the card instead of being cut at its edge.
+  const p = Math.max(w, h) * 0.6
+  const W = w + 2 * p
+  const H = h + 2 * p
+  rd.setViewport(x - p, y - p, W, H)
+  rd.setScissor(x - p, y - p, W, H)
+  // Course art slots replace the coins: no label above, so frame tight and nearly centred. The camera keeps the
+  // slot's scale and widens with the bleed, so the object stays the same size.
   const s = 1.2
   const a = w / h
-  Object.assign(it.cam, { left: -s * a, right: s * a, top: s * 0.95, bottom: -s * 1.05 })
+  const c = -0.05 * s
+  Object.assign(it.cam, { left: (-s * a * W) / w, right: (s * a * W) / w, top: c + (s * H) / h, bottom: c - (s * H) / h })
   it.cam.updateProjectionMatrix()
   // Textures boil slower than the motion: a new drawing every 3rd tick (~4 per second).
   it.U.uSeed.value = o.still ? 1 : (Math.floor(o.tick / 3) % 3) + 1
@@ -320,5 +327,7 @@ export function renderItem(
   if (o.advance) it.fold += ((o.hovered && !o.still ? 1 : 0) - it.fold) * 0.35
   it.grp.rotation.y = it.yaw
   it.grp.rotation.x = o.still ? 0 : Math.sin(o.t / 1100 + it.index) * 0.08 + it.fold * 0.22
+  // Bleed areas overlap neighbouring slots: keep their colour, only reset depth for this object.
+  rd.clearDepth()
   rd.render(it.sc, it.cam)
 }
