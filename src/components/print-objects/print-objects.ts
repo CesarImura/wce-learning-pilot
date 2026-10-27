@@ -97,6 +97,13 @@ type ModelDef = { parts: Part[]; rz: number }
 
 const lathe = (pts: number[][], seg: number) => new THREE.LatheGeometry(pts.map((q) => new THREE.Vector2(q[0], q[1])), seg)
 
+const BIDS = [0.7, 1.0, 0.85, 1.3, 1.1]
+const ASKS = [0.5, 0.8, 0.65, 0.9, 0.6]
+const RING_R = 1.55
+const RING_TILT = (25 * Math.PI) / 180
+// A point on the globe's orbit ring at angle a, ring tilted by t about Z.
+const ringPoint = (a: number, t: number) => [RING_R * Math.cos(a) * Math.cos(t), RING_R * Math.cos(a) * Math.sin(t), RING_R * Math.sin(a)]
+
 const MODELS: (() => ModelDef)[] = [
   () => {
     const pal = ["bone", "blue", "black", "bone"]
@@ -151,6 +158,49 @@ const MODELS: (() => ModelDef)[] = [
       parts: [
         [box(1.1, 1.1, 1.1, -0.35, -0.4, 0.2), pal, "1"],
         [box(0.72, 0.72, 0.72, 0.55, 0.5, -0.3), ["blue", "bone", "black"], "2"],
+      ],
+      rz: 0,
+    }
+  },
+  () => {
+    // Order book ladder: bids stack down on the left, asks stack up on the right, a spread gap between.
+    const parts: Part[] = []
+    BIDS.forEach((w, k) => parts.push([box(w, 0.18, 0.6, -0.1 - w / 2, -0.15 - k * 0.26, 0), k % 2 ? ["deep", "blue", "deep"] : ["blue", "deep", "blue"], "bid" + k]))
+    ASKS.forEach((w, k) => parts.push([box(w, 0.18, 0.6, 0.1 + w / 2, 0.15 + k * 0.26, 0), k % 2 ? ["black", "bone", "black"] : ["bone", "black", "bone"], "ask" + k]))
+    return { parts, rz: 0 }
+  },
+  () => {
+    // Portico: step, three columns, entablature, pediment (hand-written prism).
+    const cols: Part[] = [-0.95, 0, 0.95].map((x, k) => {
+      const c = new THREE.CylinderGeometry(0.22, 0.22, 1.4, 6)
+      c.translate(x, -0.1, 0)
+      return [c, k === 1 ? ["bone", "blue", "bone"] : ["bone", "bone", "black"], "col" + k]
+    })
+    const pts = [[-1.3, 0.82, 0.4], [1.3, 0.82, 0.4], [0, 1.32, 0.4], [-1.3, 0.82, -0.4], [1.3, 0.82, -0.4], [0, 1.32, -0.4]]
+    const ped = tris(pts, [[0, 1, 2], [3, 5, 4], [0, 2, 5], [0, 5, 3], [1, 4, 5], [1, 5, 2], [0, 3, 4], [0, 4, 1]])
+    return {
+      parts: [
+        [box(3, 0.2, 1, 0, -0.9, 0), ["bone", "black", "bone"], "base"],
+        ...cols,
+        [box(2.8, 0.22, 0.8, 0, 0.71, 0), ["bone", "blue", "bone", "black"], "ent"],
+        [ped, ["blue", "bone", "bone", "black"], "ped"],
+      ],
+      rz: 0,
+    }
+  },
+  () => {
+    // Faceted globe, a tilted orbit ring and a tiny satellite parked on it (animation moves it along the ring).
+    const ring = new THREE.TorusGeometry(RING_R, 0.07, 3, 12)
+    ring.rotateX(Math.PI / 2)
+    ring.rotateZ(RING_TILT)
+    const sat = new THREE.IcosahedronGeometry(0.1, 0)
+    const q = ringPoint(0, RING_TILT)
+    sat.translate(q[0], q[1], q[2])
+    return {
+      parts: [
+        [new THREE.IcosahedronGeometry(1, 1), ["blue", "deep", "bone", "blue", "deep"], "g"],
+        [ring, ["bone"], "r"],
+        [sat, ["black", "bone"], "s"],
       ],
       rz: 0,
     }
@@ -214,6 +264,12 @@ export function createItem(i: number, dpr: number): PrintItem {
     // Centre the candle's true middle (wicks included: +1.80 to -1.55, scaled 0.8) on the frame centre (-0.06).
     grp.position.y = -0.16
   }
+  if (i === 6) grp.scale.setScalar(0.75)
+  if (i === 7) {
+    grp.scale.setScalar(0.7)
+    grp.position.y = -0.17
+  }
+  if (i === 8) grp.scale.setScalar(0.72)
   const sc = new THREE.Scene()
   sc.add(grp)
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50)
@@ -261,9 +317,11 @@ const ANIM: ((it: PrintItem, th: number) => void)[] = [
     m.rotation.set(-0.25 + Math.sin(th * 4.4) * 0.12, 0, Math.sin(th * 2.2) * 0.45)
   },
   (it, th) => {
-    const ph = (th % 1.5) / 1.5
-    it.U.uExplode.value = ph < 0.5 ? 0.38 * Math.sin(((ph / 0.5) * Math.PI) / 2) : 0.38 * Math.max(0, 1 - ob(Math.min((ph - 0.5) / 0.3, 1)))
-    it.ms[0].rotation.y = ph * 0.6
+    // Quarter-turn snap with overshoot, hold, then a small scale settle: a sharp edge catching the light.
+    const m = it.ms[0]
+    m.rotation.y = (Math.PI / 2) * ob(Math.min(th / 0.35, 1))
+    const q = (th - 0.35) / 0.35
+    m.scale.setScalar(q > 0 && q < 1 ? 1 + 0.06 * Math.sin(q * Math.PI) : 1)
   },
   (it, th) => {
     const w = (1 - Math.cos(th * 3.2)) / 2
@@ -271,6 +329,46 @@ const ANIM: ((it: PrintItem, th: number) => void)[] = [
     a.scale.setScalar(1 - 0.38 * w)
     b.scale.setScalar(1 + 0.55 * w)
     b.position.y = 0.25 * w
+  },
+  (it, th) => {
+    // Buyers lift the offer: bids widen in sequence while the asks shrink.
+    const env = (d: number) => (d < 0.4 ? ob(d / 0.4) : d < 1 ? 1 : d < 1.4 ? 1 - (d - 1) / 0.4 : 0)
+    const ph = (k: number) => (((th - k * 0.08) % 1.6) + 1.6) % 1.6
+    BIDS.forEach((w, k) => {
+      const m = it.ms[k]
+      const s = 1 + 0.5 * env(ph(k))
+      m.scale.x = s
+      m.position.x = -((s - 1) * w) / 2
+    })
+    ASKS.forEach((w, k) => {
+      const m = it.ms[BIDS.length + k]
+      const s = 1 - (0.15 + 0.15 * k) * env(ph(k + BIDS.length))
+      m.scale.x = s
+      m.position.x = ((s - 1) * w) / 2
+    })
+  },
+  (it, th) => {
+    // Columns rise one by one, the entablature and pediment ride the tallest.
+    const lift = (k: number) => {
+      const d = (((th - k * 0.12) % 1.4) + 1.4) % 1.4
+      return d < 0.6 ? Math.sin((d / 0.6) * Math.PI) : 0
+    }
+    for (let k = 0; k < 3; k++) {
+      const m = it.ms[1 + k]
+      const l = lift(k)
+      m.position.y = 0.25 * l
+      m.scale.y = 1 + 0.08 * l
+    }
+    it.ms[4].position.y = it.ms[5].position.y = 0.25 * lift(2)
+  },
+  (it, th) => {
+    // Globe spins up, the ring tilts toward 50 degrees and back, the satellite runs the ring.
+    const V = 6, T = 0.6
+    it.ms[0].rotation.y = th < T ? (V * th * th * th) / (3 * T * T) : (V * T) / 3 + V * (th - T)
+    const tilt = RING_TILT + ((25 * Math.PI) / 180) * (1 - Math.cos(th * 2.4)) / 2
+    it.ms[1].rotation.z = tilt - RING_TILT
+    const a = th * 3, p = ringPoint(a, tilt), p0 = ringPoint(0, RING_TILT)
+    it.ms[2].position.set(p[0] - p0[0], p[1] - p0[1], p[2] - p0[2])
   },
 ]
 

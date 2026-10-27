@@ -9,7 +9,7 @@ import { TOPICS, type TopicId } from "@/lib/topics"
 import { cn } from "@/lib/utils"
 
 // Topic -> print object model (0 candle, 1 staircase, 2 folded floor + ball, 3 plane, 4 crystal, 5 two boxes).
-const PRINT_MODEL: Record<TopicId, number> = { foundations: 0, "order-flow": 1, edge: 4, institutional: 5, macro: 3 }
+const PRINT_MODEL: Record<TopicId, number> = { foundations: 0, "order-flow": 6, edge: 4, institutional: 7, macro: 8 }
 
 /** A topic's coin with live progress; its reverse (in the inspector) shows lessons, units and XP. */
 export function TopicCoin({
