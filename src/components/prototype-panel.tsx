@@ -68,10 +68,10 @@ export const useBeta = betaPref.use
 type Corners = "8" | "12"
 const cornersPref = createPref<Corners>("wce-academy-corners", ["8", "12"], "12")
 
-// Lesson art on the course path: the lucide icon circles or the 3D print objects.
-type LessonArt = "icons" | "print"
-const lessonArtPref = createPref<LessonArt>("wce-lesson-art", ["icons", "print"], "print")
-export const useLessonArt = lessonArtPref.use
+// Course art: the metal topic coins or the 3D print objects (one folded-paper object per course topic).
+type CourseArt = "coins" | "print"
+const courseArtPref = createPref<CourseArt>("wce-course-art", ["coins", "print"], "print")
+export const useCourseArt = courseArtPref.use
 
 function Segmented<T extends string>({
   label,
@@ -113,7 +113,7 @@ export function HomeLayoutSwitch() {
   const layout = useHomeLayout()
   const week = useWeekCard()
   const corners = cornersPref.use()
-  const lessonArt = lessonArtPref.use()
+  const courseArt = courseArtPref.use()
   const paywall = usePaywallGroup()
   const beta = useBeta()
   const onHome = usePathname() === "/courses"
@@ -189,11 +189,11 @@ export function HomeLayoutSwitch() {
         ]}
       />
       <Segmented
-        label="Lesson art"
-        value={lessonArt}
-        onChange={lessonArtPref.set}
+        label="Course art"
+        value={courseArt}
+        onChange={courseArtPref.set}
         options={[
-          { id: "icons", title: "Icons in circles" },
+          { id: "coins", title: "Metal coins" },
           { id: "print", title: "Print objects" },
         ]}
       />

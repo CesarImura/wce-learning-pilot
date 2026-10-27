@@ -294,10 +294,10 @@ export function renderItem(
   const { x, y, w, h } = o
   rd.setViewport(x, y, w, h)
   rd.setScissor(x, y, w, h)
-  // The mock cards are 230px tall at 2.2; the compact path cards (~112px) zoom in so objects keep their size.
-  const s = h >= 180 ? 2.2 : 1.6
+  // Course art slots replace the coins: no label above, so frame tight and nearly centred, with room for hover gestures.
+  const s = 1.5
   const a = w / h
-  Object.assign(it.cam, { left: -s * a, right: s * a, top: s * 0.74, bottom: -s * 1.26 })
+  Object.assign(it.cam, { left: -s * a, right: s * a, top: s * 0.95, bottom: -s * 1.05 })
   it.cam.updateProjectionMatrix()
   it.U.uSeed.value = o.still ? 1 : (o.tick % 3) + 1
   it.U.uRes.value.set(o.cw, o.ch)

@@ -1,8 +1,15 @@
 "use client"
 
+import { useState } from "react"
 import { Coin } from "@/components/coin/coin"
+import { PrintObject } from "@/components/print-objects/print-object"
+import { useCourseArt } from "@/components/prototype-panel"
 import { fmtPoints, topicProgress, useProgress } from "@/lib/progress"
 import { TOPICS, type TopicId } from "@/lib/topics"
+import { cn } from "@/lib/utils"
+
+// Topic -> print object model (0 candle, 1 staircase, 2 folded floor + ball, 3 plane, 4 crystal, 5 two boxes).
+const PRINT_MODEL: Record<TopicId, number> = { foundations: 0, "order-flow": 1, edge: 4, institutional: 5, macro: 3 }
 
 /** A topic's coin with live progress; its reverse (in the inspector) shows lessons, units and XP. */
 export function TopicCoin({
@@ -17,8 +24,21 @@ export function TopicCoin({
   className?: string
 }) {
   const p = useProgress()
+  const art = useCourseArt()
+  const [hovered, setHovered] = useState(false)
   const topic = TOPICS[topicId]
   const tp = topicProgress(topicId, p)
+  if (art === "print")
+    return (
+      <div
+        style={{ width: size, height: size }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className={cn("relative shrink-0", tp.state === "locked" && "opacity-40", className)}
+      >
+        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered && tp.state !== "locked"} className="absolute inset-0" />
+      </div>
+    )
   return (
     <Coin
       topic={topic}

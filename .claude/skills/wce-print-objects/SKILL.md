@@ -1,15 +1,15 @@
 ---
 name: wce-print-objects
-description: The WCE "print objects" style for Training topic art — 3D folded-paper objects with a flat, boiling riso-print shader. Use when adding a new topic object, changing the look, or touching the print-object renderer in the course path.
+description: The WCE "print objects" style for Training topic art — 3D folded-paper objects with a flat, boiling riso-print shader. Use when adding a new course object, changing the look, or touching the print-object renderer that replaces the course coins.
 ---
 
 # WCE print objects
 
-Topic art for the Training course path: each lesson gets a small 3D folded-paper object (candle, staircase, folded floor with ball, paper plane, crystal, two boxes) rendered with a custom shader that makes it look printed, not rendered. Inspired by a paper-folding motion piece Cesar shared (Pinterest pin 835136324709290529), rebuilt on the WCE brand.
+Course art for Training: each course (by its topic) gets a small 3D folded-paper object that replaces its metal coin (candle, staircase, folded floor with ball, paper plane, crystal, two boxes) rendered with a custom shader that makes it look printed, not rendered. Inspired by a paper-folding motion piece Cesar shared (Pinterest pin 835136324709290529), rebuilt on the WCE brand.
 
 ## Where things live
 - `public/lab/print-objects.html` — standalone lab with every model and tuning controls (served at `/lab/print-objects.html`). It is the reference for the look: port from it, don't drift.
-- `src/components/print-objects/print-objects.ts` (shader, models, animations) and `print-object.tsx` (shared renderer + `<PrintObject model hovered />`), plus the "Lesson art" toggle in `src/components/prototype-panel.tsx`. The course path uses it in `src/components/wce/course-detail.tsx` (`LessonNode`).
+- `src/components/print-objects/print-objects.ts` (shader, models, animations) and `print-object.tsx` (shared renderer + `<PrintObject model hovered />`), plus the "Course art" toggle (coins / print) in `src/components/prototype-panel.tsx`. `src/components/wce/topic-coin.tsx` swaps the coin for `<PrintObject>` and maps topic → model (foundations candle, order-flow staircase, edge crystal, institutional boxes, macro plane). Lessons keep their icons.
 - Shared lab for people without the repo: https://claude.ai/artifact/PG3VpC2UgMVjYJoMWRiKAV (ask Cesar for access).
 
 ## The locked look (26 Oct 2026, Cesar)
