@@ -210,7 +210,8 @@ export function createItem(i: number, dpr: number): PrintItem {
   grp.rotation.z = d.rz
   if (i === 0) {
     grp.scale.setScalar(0.8)
-    grp.position.y = -0.45
+    // Centre the candle's true middle (wicks included: +1.80 to -1.55, scaled 0.8) on the frame centre (-0.06).
+    grp.position.y = -0.16
   }
   const sc = new THREE.Scene()
   sc.add(grp)
