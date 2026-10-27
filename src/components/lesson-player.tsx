@@ -15,7 +15,6 @@ import {
   Zap,
 } from "lucide-react"
 import { TouchStage } from "@/components/exercises/touch-stage"
-import { breakHeart, burst, flyXp, shake } from "@/components/exercises/answer-fx"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ExerciseKind, Lesson, Step } from "@/lib/lessons"
@@ -231,35 +230,6 @@ export function LessonPlayer({
     const t = setTimeout(() => setXpPop(null), 1400)
     return () => clearTimeout(t)
   }, [xpPop])
-
-  // Answer feedback FX (see answer-fx.ts). They start where the learner last touched the exercise,
-  // or at the middle of the exercise when there was no pointer (keyboard, Right/Wrong preview).
-  const lastPointer = useRef<{ x: number; y: number } | null>(null)
-  const fxOrigin = useRef({ x: 0, y: 0 })
-  const stageRef = useRef<HTMLDivElement>(null)
-  const xpRef = useRef<HTMLSpanElement>(null)
-  const heartRef = useRef<HTMLSpanElement>(null)
-  const prevFeedback = useRef<Feedback | null>(null)
-  const prevHearts = useRef(hearts)
-  // Declared before the xpPop effect: both fire in the same commit and the flight needs the origin.
-  useEffect(() => {
-    const fresh = !!feedback && !prevFeedback.current
-    prevFeedback.current = feedback
-    if (!fresh) return
-    const r = stageRef.current?.getBoundingClientRect()
-    const o = lastPointer.current ?? (r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: window.innerWidth / 2, y: window.innerHeight / 2 })
-    lastPointer.current = null
-    fxOrigin.current = o
-    if (feedback.correct) burst(o.x, o.y)
-    else shake(stageRef.current)
-  }, [feedback])
-  useEffect(() => {
-    if (xpPop) flyXp(xpPop.amount, fxOrigin.current.x, fxOrigin.current.y, xpRef.current)
-  }, [xpPop])
-  useEffect(() => {
-    if (hearts < prevHearts.current) breakHeart(heartRef.current)
-    prevHearts.current = hearts
-  }, [hearts])
 
   const onReady = useCallback((fn: (() => Feedback) | null) => {
     checker.current = fn
@@ -630,17 +600,26 @@ export function LessonPlayer({
             <div className="h-full bg-brand transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex shrink-0 items-center justify-end gap-4 md:gap-6 xl:w-[267px]">
-            <span ref={heartRef} className="flex items-center gap-2" aria-label={`${hearts} hearts left`}>
+            <span className="flex items-center gap-2" aria-label={`${hearts} hearts left`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/wce/lesson/heart.svg" alt="" width={20} height={20} />
-              <span data-heart-count className="text-[16px] leading-5 font-semibold text-down tabular-nums">{hearts}</span>
+              <span className="text-[16px] leading-5 font-semibold text-down tabular-nums">{hearts}</span>
             </span>
-            <span ref={xpRef} className="relative flex items-center gap-1.5" title="XP earned in this lesson">
+            <span className="relative flex items-center gap-1.5" title="XP earned in this lesson">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/wce/lesson/xp.svg" alt="" width={20} height={20} />
               <span key={points} className="text-[16px] leading-5 font-semibold whitespace-nowrap text-[#ffd36e] tabular-nums animate-in zoom-in-110 duration-200">
                 {points} XP
               </span>
+              {xpPop && (
+                <span
+                  key={xpPop.id}
+                  role="status"
+                  className="pointer-events-none absolute top-full right-0 mt-2 rounded-[4px] bg-[#ffd36e] px-2.5 py-1 text-[13px] leading-4 font-semibold whitespace-nowrap text-black tabular-nums shadow-[0_6px_20px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-top-2 duration-200"
+                >
+                  +{xpPop.amount} XP
+                </span>
+              )}
             </span>
             <button
               onClick={() => setSound(!sound)}
@@ -698,11 +677,7 @@ export function LessonPlayer({
                   "flex w-full shrink-0 flex-col gap-8 transition-none animate-in fade-in slide-in-from-right-4 duration-300",
                   isLearn ? "max-w-[550px]" : wide ? "max-w-[832px] lg:max-w-[1200px]" : "max-w-[832px]",
                 )}
-                onPointerDownCapture={(e) => {
-                  if (feedback) return
-                  lastPointer.current = { x: e.clientX, y: e.clientY }
-                  setTouched(true)
-                }}
+                onPointerDownCapture={() => !feedback && setTouched(true)}
                 onKeyDownCapture={() => !feedback && setTouched(true)}
               >
                 {isLearn && (
@@ -731,19 +706,17 @@ export function LessonPlayer({
                   </div>
                 )}
 
-                <div ref={stageRef} className="rounded-[12px]">
-                  <TouchStage>
-                    <Exercise
-                      {...step.props}
-                      title={isLearn ? step.prompt : undefined}
-                      phase={feedback ? "review" : "answer"}
-                      verdict={feedback ? (feedback.correct ? "correct" : "wrong") : undefined}
-                      onReady={onReady}
-                      autoAnswer={preview === "default" || isLearn ? undefined : preview === "right" ? "correct" : "wrong"}
-                      onWatch={() => setClip({ lesson: clipLesson, at: watchAt })}
-                    />
-                  </TouchStage>
-                </div>
+                <TouchStage>
+                  <Exercise
+                    {...step.props}
+                    title={isLearn ? step.prompt : undefined}
+                    phase={feedback ? "review" : "answer"}
+                    verdict={feedback ? (feedback.correct ? "correct" : "wrong") : undefined}
+                    onReady={onReady}
+                    autoAnswer={preview === "default" || isLearn ? undefined : preview === "right" ? "correct" : "wrong"}
+                    onWatch={() => setClip({ lesson: clipLesson, at: watchAt })}
+                  />
+                </TouchStage>
               </div>
             </div>
           </main>
