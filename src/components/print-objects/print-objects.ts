@@ -395,7 +395,7 @@ function rest(it: PrintItem) {
 export function renderItem(
   rd: THREE.WebGLRenderer,
   it: PrintItem,
-  o: { x: number; y: number; w: number; h: number; cw: number; ch: number; tick: number; t: number; hovered: boolean; still: boolean; advance: boolean },
+  o: { x: number; y: number; w: number; h: number; cw: number; ch: number; tick: number; t: number; hovered: boolean; still: boolean; advance: boolean; speed?: number },
 ) {
   const { x, y, w, h } = o
   // No crop: draw into a viewport that bleeds well past the slot, so tall objects and hover gestures
@@ -427,10 +427,11 @@ export function renderItem(
   if (!o.advance) {
     // scroll redraw: same pose, new position
   } else if (!o.still) {
-    it.yaw += cfg.spin
+    const speed = o.speed ?? 1
+    it.yaw += cfg.spin * speed
     if (o.hovered) {
       if (!it.hs) it.hs = performance.now()
-      ANIM[it.index](it, (performance.now() - it.hs) / 1000)
+      ANIM[it.index](it, ((performance.now() - it.hs) / 1000) * speed)
     } else {
       it.hs = 0
       rest(it)

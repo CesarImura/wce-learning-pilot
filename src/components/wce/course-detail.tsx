@@ -210,7 +210,7 @@ export function CourseDetail({ course }: { course: Course }) {
                 className="grid size-[104px] shrink-0 place-items-center rounded-full"
                 style={art === "print" ? undefined : { backgroundImage: `radial-gradient(circle at 50% 50%, ${topicOf(course).color}33, transparent 70%)` }}
               >
-                <TopicCoin topicId={course.topic} size={art === "print" ? 104 : 96} float />
+                <TopicCoin topicId={course.topic} size={art === "print" ? 104 : 96} float autoplay speed={0.8} />
               </div>
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/55">

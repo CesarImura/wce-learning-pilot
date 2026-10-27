@@ -5,7 +5,7 @@ import * as THREE from "three"
 import { get as getSettings } from "./settings"
 import { MODEL_COUNT, createItem, renderItem, type PrintItem } from "./print-objects"
 
-type Slot = { el: HTMLElement; item: PrintItem; hovered: boolean; active: boolean }
+type Slot = { el: HTMLElement; item: PrintItem; hovered: boolean; active: boolean; speed: number }
 
 const slots = new Set<Slot>()
 let shared: { rd: THREE.WebGLRenderer; canvas: HTMLCanvasElement; dpr: number; stop: () => void; w: number; h: number } | null = null
@@ -50,7 +50,7 @@ function ensureRenderer() {
     slots.forEach((slot) => {
       const r = slot.el.getBoundingClientRect()
       if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > ih || r.right < 0 || r.left > iw) return
-      renderItem(rd, slot.item, { x: r.left, y: ih - r.bottom, w: r.width, h: r.height, cw: iw, ch: ih, tick, t, hovered: slot.hovered, still: still || (!slot.hovered && !slot.active), advance })
+      renderItem(rd, slot.item, { x: r.left, y: ih - r.bottom, w: r.width, h: r.height, cw: iw, ch: ih, tick, t, hovered: slot.hovered, still: still || (!slot.hovered && !slot.active), advance, speed: slot.speed })
     })
   }
 
@@ -87,7 +87,7 @@ function ensureRenderer() {
 
 function register(el: HTMLElement, model: number) {
   const s = ensureRenderer()
-  const slot: Slot = { el, item: createItem(model, s.dpr), hovered: false, active: false }
+  const slot: Slot = { el, item: createItem(model, s.dpr), hovered: false, active: false, speed: 1 }
   slots.add(slot)
   return {
     slot,
@@ -108,11 +108,14 @@ export function PrintObject({
   model,
   hovered = false,
   active = false,
+  speed = 1,
   className,
 }: {
   model: number
   hovered?: boolean
   active?: boolean
+  /** Gesture and spin speed multiplier (1 = normal). */
+  speed?: number
   className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -134,8 +137,9 @@ export function PrintObject({
     if (slotRef.current) {
       slotRef.current.hovered = hovered
       slotRef.current.active = active
+      slotRef.current.speed = speed
     }
-  }, [hovered, active, m])
+  }, [hovered, active, speed, m])
 
   return <div ref={ref} aria-hidden className={className} />
 }

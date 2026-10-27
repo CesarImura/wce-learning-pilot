@@ -17,6 +17,8 @@ export function TopicCoin({
   size,
   float,
   active,
+  autoplay,
+  speed,
   className,
 }: {
   topicId: TopicId
@@ -24,6 +26,10 @@ export function TopicCoin({
   float?: boolean
   /** Print art only: keep the object moving without hover (the page's hero object). */
   active?: boolean
+  /** Print art only: play the hover gesture on loop without hover (the course page header). */
+  autoplay?: boolean
+  /** Print art only: gesture and spin speed multiplier. */
+  speed?: number
   className?: string
 }) {
   const p = useProgress()
@@ -62,7 +68,7 @@ export function TopicCoin({
             maskImage: "radial-gradient(closest-side, #000 35%, transparent)",
           }}
         />
-        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered} active={active} className="absolute inset-0" />
+        <PrintObject model={PRINT_MODEL[topicId]} hovered={hovered || !!autoplay} active={active} speed={speed} className="absolute inset-0" />
       </div>
     )
   return (
