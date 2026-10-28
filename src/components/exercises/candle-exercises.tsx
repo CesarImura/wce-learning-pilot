@@ -156,7 +156,7 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
         return {
           correct: false,
           detail:
-            "You swapped Open and Close. The hour opened at 9:00 (where the line starts) and closed at 10:00 (the blue dot), so it closed higher: a green candle.",
+            "You swapped Open and Close. The hour opened at 9:00 (where the line starts) and closed at 10:00 (the C chip, where the line ends), so it closed higher: a green candle.",
         }
       return off.length === 0
         ? { correct: true, detail: "That's exactly the candle for this hour. The body is green because it closed above the open." }
@@ -172,10 +172,10 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
     setV((s) => ({ ...s, [k]: Math.min(MAX - 0.05, Math.max(MIN + 0.05, price(py))) }))
   }
   const handles: { k: keyof Ohlc; x: number; color: string }[] = [
-    { k: "h", x: CANDLE_X, color: "var(--brand-pale)" },
-    { k: "l", x: CANDLE_X, color: "var(--brand-pale)" },
+    { k: "h", x: CANDLE_X, color: "#9aa3ab" },
+    { k: "l", x: CANDLE_X, color: "#9aa3ab" },
     { k: "o", x: CANDLE_X - 42, color: "var(--brand)" },
-    { k: "c", x: CANDLE_X + 42, color: "var(--brand)" },
+    { k: "c", x: CANDLE_X + 42, color: "var(--foreground)" },
   ]
   const dragH = useDragY(svgRef, set("h"), review)
   const dragL = useDragY(svgRef, set("l"), review)
@@ -190,14 +190,25 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
       <ChartFrame>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full touch-none overflow-visible select-none">
           <TickLine ticks={ticks} upto={ticks.length} />
-          {/* Name both ends of the hour: the open is where the line starts, the close is the blue dot. */}
-          <circle cx={LINE_L} cy={y(ticks[0])} r={4} fill="var(--background)" stroke="var(--foreground)" strokeWidth={2} />
-          <text x={LINE_L + 8} y={y(ticks[0]) + 20} className="fill-muted-foreground text-[11px]">
-            opens
-          </text>
-          <text x={LINE_R} y={y(ticks[ticks.length - 1]) - 12} textAnchor="middle" className="fill-brand text-[11px]">
-            closes
-          </text>
+          {/* The hour's first and last prices wear the same chips as the O and C handles, so the mapping reads at a glance. */}
+          {[
+            { k: "O", i: 0, color: "var(--brand)", label: "9:00 · open" },
+            { k: "C", i: ticks.length - 1, color: "var(--foreground)", label: "10:00 · close" },
+          ].map(({ k, i, color, label }) => {
+            const cx = LINE_L + (i * (LINE_R - LINE_L)) / (ticks.length - 1)
+            const cy = y(ticks[i])
+            return (
+              <g key={k} pointerEvents="none">
+                <circle cx={cx} cy={cy} r={9} fill={color} stroke="var(--background)" strokeWidth={2} />
+                <text x={cx} y={cy + 4} textAnchor="middle" fill="#000" className="text-[10px] font-bold">
+                  {k}
+                </text>
+                <text x={cx} y={cy - 15} textAnchor={i === 0 ? "start" : "middle"} fill={color} className="text-[11px] font-medium">
+                  {label}
+                </text>
+              </g>
+            )
+          })}
           {handles.map(({ k }) => {
             // The guide of the handle in hand brightens so it reads against the others.
             const active = !review && !!drags[k]["data-dragging"]
@@ -252,7 +263,7 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
         </svg>
       </ChartFrame>
       <p className="px-1 text-sm text-muted-foreground">
-        Drag <b>O</b>, <b>H</b>, <b>L</b> and <b>C</b> so the candle matches the hour of price action on the left.
+        A candle opens at the hour&apos;s first price and closes at its last. Drag <b>O</b>, <b>H</b>, <b>L</b> and <b>C</b> so the candle matches the hour on the left.
       </p>
     </div>
   )
