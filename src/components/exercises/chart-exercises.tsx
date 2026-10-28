@@ -342,7 +342,7 @@ export function SortCharts({ phase, onReady }: ExerciseProps) {
       const wrong = series.filter((s) => labels[s.id] !== s.regime).map((s) => s.id)
       return wrong.length === 0
         ? { correct: true, detail: "Trends make higher highs and higher lows (or the reverse). Ranges keep returning to the same levels." }
-        : { correct: false, detail: `Chart ${wrong.join(" and ")} ${wrong.length > 1 ? "are" : "is"} misclassified.` }
+        : { correct: false, detail: `${wrong.length > 1 ? "Charts" : "Chart"} ${wrong.length > 1 ? `${wrong.slice(0, -1).join(", ")} and ${wrong[wrong.length - 1]}` : wrong[0]} ${wrong.length > 1 ? "are" : "is"} misclassified.` }
     })
   }, [labels, series, onReady])
 
@@ -425,7 +425,12 @@ export function MaTuner({ phase, onReady }: ExerciseProps) {
   useEffect(() => {
     if (!moved) return onReady(null)
     onReady(() =>
-      crosses <= target
+      crosses === 0
+        ? {
+            correct: false,
+            detail: `No signals at all: a ${period}-period MA is too slow to trade. Aim for 1 to ${target} crossovers.`,
+          }
+        : crosses <= target
         ? {
             correct: true,
             detail: `With a ${period}-period MA you only get ${crosses} signal${crosses === 1 ? "" : "s"}. The trade-off: longer MAs react later, so you enter later.`,
@@ -614,8 +619,8 @@ const snap = (p: number) => Math.round(p * 20) / 20
 export function PlaceTrade({ phase, onReady }: ExerciseProps) {
   const { candles, visible, resistance } = useMemo(() => breakoutScenario(), [])
   const entry = candles[visible - 1].c
-  const [stop, setStop] = useState(109)
-  const [tp, setTp] = useState(111)
+  const [stop, setStop] = useState(108.7)
+  const [tp, setTp] = useState(111.5)
   const svgRef = useRef<SVGSVGElement>(null)
   const review = phase === "review"
   const shown = useReveal(review, visible, candles.length, 70)
@@ -694,6 +699,9 @@ export function PlaceTrade({ phase, onReady }: ExerciseProps) {
                 stroke="var(--muted-foreground)"
                 strokeDasharray="2 4"
               />
+              <text x={s.right - 4} y={s.y(resistance) + 14} textAnchor="end" className="fill-muted-foreground text-[11px] font-semibold">
+                Resistance 108
+              </text>
               <DragLine s={s} svgRef={svgRef} price={entry} label="Entry (market)" tone="muted" disabled onChange={() => {}} />
               <DragLine s={s} svgRef={svgRef} price={tp} label="Take profit" tone="up" disabled={review} onChange={(p) => setTp(snap(p))} />
               <DragLine s={s} svgRef={svgRef} price={stop} label="Stop loss" tone="down" disabled={review} onChange={(p) => setStop(snap(p))} />

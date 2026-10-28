@@ -116,8 +116,8 @@ export const STEPS: Record<DemoKind, Step> = {
     kind: "ma-tuner",
     mode: "exercise",
     eyebrow: "Tune",
-    prompt: "Tune the moving average until it gives 3 or fewer crossover signals",
-    help: { hint: "Short averages hug price and flip sides often. Slide toward a longer period to smooth out the noise." },
+    prompt: "Tune the moving average until it gives 1 to 3 crossover signals",
+    help: { hint: "Short averages hug price and flip sides often. Slide toward a longer period to smooth out the noise, but not so long that it never crosses." },
   },
   "order-book": {
     kind: "order-book",

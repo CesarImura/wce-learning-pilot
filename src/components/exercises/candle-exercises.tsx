@@ -68,6 +68,11 @@ function CandleShape({
 }
 
 /** Lays labels out top-to-bottom by price, keeping them at least 15px apart. */
+function clock(t: number) {
+  const m = Math.round((t - 1) * (60 / 47))
+  return m >= 60 ? "10:00" : `9:${String(m).padStart(2, "0")}`
+}
+
 function spread(items: { k: string; v: number }[]) {
   const sorted = [...items].sort((a, b) => b.v - a.v)
   let last = -Infinity
@@ -115,7 +120,7 @@ export function CandleScrub() {
       <div className="space-y-2 px-1">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Drag the time slider</span>
-          <span className="tabular-nums">9:{String(Math.round((t - 1) * (60 / 47))).padStart(2, "0")}</span>
+          <span className="tabular-nums">{clock(t)}</span>
         </div>
         <Slider min={1} max={ticks.length} step={1} value={[t]} onValueChange={(v) => setT(sliderValue(v))} />
       </div>
