@@ -145,6 +145,14 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
       const tol = 0.45
       const off = (["o", "h", "l", "c"] as const).filter((k) => Math.abs(v[k] - ohlc[k]) > tol)
       const names = { o: "Open", h: "High", l: "Low", c: "Close" }
+      // The most common miss: O dragged to where the line ends and C to where it starts.
+      const swapped = Math.abs(v.o - ohlc.c) <= tol && Math.abs(v.c - ohlc.o) <= tol
+      if (swapped)
+        return {
+          correct: false,
+          detail:
+            "You swapped Open and Close. The hour opened at 9:00 (where the line starts) and closed at 10:00 (the blue dot), so it closed higher: a green candle.",
+        }
       return off.length === 0
         ? { correct: true, detail: "That's exactly the candle for this hour. The body is green because it closed above the open." }
         : {
@@ -177,6 +185,14 @@ export function CandleBuilder({ phase, onReady }: ExerciseProps) {
       <ChartFrame>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full touch-none overflow-visible select-none">
           <TickLine ticks={ticks} upto={ticks.length} />
+          {/* Name both ends of the hour: the open is where the line starts, the close is the blue dot. */}
+          <circle cx={LINE_L} cy={y(ticks[0])} r={4} fill="var(--background)" stroke="var(--foreground)" strokeWidth={2} />
+          <text x={LINE_L + 8} y={y(ticks[0]) + 20} className="fill-muted-foreground text-[11px]">
+            opens
+          </text>
+          <text x={LINE_R} y={y(ticks[ticks.length - 1]) - 12} textAnchor="middle" className="fill-brand text-[11px]">
+            closes
+          </text>
           {handles.map(({ k }) => {
             // The guide of the handle in hand brightens so it reads against the others.
             const active = !review && !!drags[k]["data-dragging"]

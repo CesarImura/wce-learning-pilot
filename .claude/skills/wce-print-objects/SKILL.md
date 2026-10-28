@@ -40,8 +40,8 @@ Course art for Training: each course (by its topic) gets a small 3D folded-paper
 5. Check framing in the lab: nothing clipped by the card, nothing over the label, every silhouette readable on the dark card.
 
 ## Gotchas
-- One WebGL renderer for all cards (scissor + viewport per card). Never one canvas per lesson: browsers cap WebGL contexts at ~16.
-- Re-measure card rects every tick; a canvas sized once misses cards that lay out later.
-- `uCtr` must be the card centre in canvas pixels (WebGL y from the bottom) or the Flat prints slide off-centre.
+- One offscreen WebGL renderer and one shared material for all objects; each object copies its frame into its own 2D canvas inside the card (so it scrolls natively on phones). Never one WebGL canvas per object: browsers cap WebGL contexts at ~16.
+- Render on change only: still objects draw once (mount, resize, settings change, becoming visible); only hovered, `active` or autoplay ones tick. No scroll listeners, no per-frame layout reads. `three` loads lazily.
+- `uCtr` is the slot centre inside the render viewport, or the Flat prints slide off-centre. `MODEL_COUNT` in `print-object.tsx` is hard-coded: bump it when adding a model.
 - Flat prints scale with the object (`uScl` = slot pixels per world unit ÷ the lab's 52px), so texture size stays proportional from a 68px list icon to the 220px banner. `tex` in the panel multiplies on top.
 - Respect `prefers-reduced-motion`: still frame, no boil.
