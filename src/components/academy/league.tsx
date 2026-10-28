@@ -5,16 +5,101 @@
 // taller with a warm gold border and progress ring, a "Rewards" pill divider
 // (with laurels on the current card) and diamond-bulleted reward lists.
 
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Check, ChevronRight, Lock } from "lucide-react"
 import { LEAGUES, ORE_ART, PROMOTE, timeLeft, weekId, weeklyStatus, type League, type Ore } from "@/lib/league"
 import { syncLeagueWeek, useLeague } from "@/lib/engagement"
 import { cn } from "@/lib/utils"
+import { TOPICS, type Topic, type TopicId } from "@/lib/topics"
+import { CoinCanvas } from "@/components/coin/coin"
+import { LEAGUE_MODEL, PrintObject } from "@/components/print-objects/print-object"
+import { useLeagueArt } from "@/components/prototype-panel"
+
+// The v1 topic coins, re-struck for the leagues: each league takes one coin's outline and pattern in its own alloy.
+// Own ids, since the coin engine caches face textures by id.
+const leagueCoin = (from: TopicId, ore: Ore, name: string, metal: Topic["metal"]): Topic => ({ ...TOPICS[from], id: `league-${ore}` as TopicId, name, metal })
+const LEAGUE_COINS: Record<Ore, Topic> = {
+  bronze: leagueCoin("order-flow", "bronze", "Bronze League", "bronze"),
+  silver: leagueCoin("edge", "silver", "Silver League", "silver"),
+  gold: leagueCoin("foundations", "gold", "Gold League", "gold"),
+  obsidian: leagueCoin("institutional", "obsidian", "Obsidian League", "obsidian"),
+}
+
+// Print trophies (print-objects.ts): bell, medal, cup, crown, in league order.
+const LEAGUE_PRINT: Record<Ore, number> = { bronze: LEAGUE_MODEL, silver: LEAGUE_MODEL + 1, gold: LEAGUE_MODEL + 2, obsidian: LEAGUE_MODEL + 3 }
+
+/** A league's art, as chosen in the prototype panel: print trophies, v1 coins or ores. */
+export function OreArt({ ore, mystery, className }: { ore: Ore; mystery?: boolean; className?: string }) {
+  const art = useLeagueArt()
+  if (art === "ore") return <OreRender ore={ore} mystery={mystery} className={className} />
+  return (
+    <div className={cn("relative aspect-square rounded-full p-[7%] ring-1 ring-white/10", className)}>
+      <div className={cn("relative size-full rounded-full [container-type:size]", art === "print" && DISC[ore])}>
+        {art === "print" ? <LeaguePrint ore={ore} mystery={mystery} /> : <LeagueCoin ore={ore} mystery={mystery} />}
+        {mystery && (
+          <span className="absolute inset-0 grid place-items-center font-serif text-[30cqw] text-white/75">?</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const DISC: Record<Ore, string> = {
+  bronze: "bg-[radial-gradient(circle_at_50%_35%,#7a5d40_0%,#2a2119_55%,#141110_100%)]",
+  silver: "bg-[radial-gradient(circle_at_50%_35%,#5c6166_0%,#25282b_55%,#121416_100%)]",
+  gold: "bg-[radial-gradient(circle_at_50%_35%,#6e5a22_0%,#2a2414_55%,#141210_100%)]",
+  obsidian: "bg-[radial-gradient(circle_at_50%_35%,#3f3566_0%,#1a1630_55%,#0e0c19_100%)]",
+}
+
+/** Wakes the art when its whole card or row is hovered, like the course print objects. */
+function useHostHover() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [hovered, setHovered] = useState(false)
+  useEffect(() => {
+    const host = ref.current?.closest<HTMLElement>("[data-print-hover], a, .glass, li") ?? ref.current
+    if (!host) return
+    const on = () => setHovered(true)
+    const off = () => setHovered(false)
+    host.addEventListener("pointerenter", on)
+    host.addEventListener("pointerleave", off)
+    return () => {
+      host.removeEventListener("pointerenter", on)
+      host.removeEventListener("pointerleave", off)
+    }
+  }, [])
+  return [ref, hovered] as const
+}
+
+function LeaguePrint({ ore, mystery }: { ore: Ore; mystery?: boolean }) {
+  const [ref, hovered] = useHostHover()
+  return (
+    <div ref={ref} className={cn("absolute inset-[3%]", mystery && "opacity-30 grayscale")}>
+      <PrintObject model={LEAGUE_PRINT[ore]} hovered={hovered && !mystery} className="absolute inset-0" />
+    </div>
+  )
+}
+
+function LeagueCoin({ ore, mystery }: { ore: Ore; mystery?: boolean }) {
+  const [ref, hovered] = useHostHover()
+  return (
+    <div ref={ref} className={cn("absolute inset-0", mystery && "brightness-[0.55]")}>
+      <CoinCanvas
+        topic={LEAGUE_COINS[ore]}
+        state={mystery ? "locked" : "mastered"}
+        pct={100}
+        rx={hovered ? -8 : 0}
+        ry={hovered ? 22 : 0}
+        scale={hovered && !mystery ? 1.04 : 1}
+        ease={0.12}
+      />
+    </div>
+  )
+}
 
 /** Ore artwork on its dark disc, with the faint outer ring from the Figma cards. */
-export function OreArt({ ore, mystery, className }: { ore: Ore; mystery?: boolean; className?: string }) {
+function OreRender({ ore, mystery, className }: { ore: Ore; mystery?: boolean; className?: string }) {
   return (
     <div className={cn("relative aspect-square rounded-full p-[7%] ring-1 ring-white/10", className)}>
       <div
@@ -37,7 +122,7 @@ export function OreArt({ ore, mystery, className }: { ore: Ore; mystery?: boolea
               maskPosition: "48% 40%",
             }}
           >
-            <Image src={ORE_ART.silver} alt="" fill sizes="240px" className="object-cover" />
+            <Image src={ORE_ART.silver} alt="" fill sizes="240px" loading="eager" className="object-cover" />
           </div>
         ) : (
           <Image
@@ -45,6 +130,7 @@ export function OreArt({ ore, mystery, className }: { ore: Ore; mystery?: boolea
             alt=""
             fill
             sizes="240px"
+            loading="eager"
             className={cn(
               "object-contain p-[12%] drop-shadow-[0_18px_24px_rgba(0,0,0,0.6)]",
               mystery && "brightness-[0.55]",
@@ -118,7 +204,7 @@ export function LeagueTile({
   index,
   state,
   weekXp,
-  promotionXp,
+  goalXp,
   rank,
   promotedRank,
 }: {
@@ -126,12 +212,14 @@ export function LeagueTile({
   index: number
   state: LeagueCardState
   weekXp: number
-  promotionXp: number
+  /** XP to reach the promotion zone; 0 once you're in it. */
+  goalXp: number
   rank: number
   /** For achieved leagues: the rank you finished with when promoted out, if known. */
   promotedRank?: number
 }) {
   const current = state === "current"
+  const art = useLeagueArt()
   const locked = state === "locked"
   const prev = LEAGUES[index - 1]
   const top = index === LEAGUES.length - 1
@@ -149,11 +237,12 @@ export function LeagueTile({
 
       <div className={cn("relative", current ? "mt-5 w-[240px] max-w-[85%]" : "mt-[30px] w-[220px] max-w-[80%]")}>
         {current ? (
-          <Ring pct={Math.min(100, promotionXp ? (weekXp / promotionXp) * 100 : 100)}>
+          <Ring pct={Math.min(100, goalXp ? (weekXp / goalXp) * 100 : 100)}>
             <OreArt ore={league.ore} className="ring-0" />
           </Ring>
         ) : (
-          <OreArt ore={locked ? "obsidian" : league.ore} mystery={locked} />
+          // Ores hide a locked league behind the dark obsidian rock; trophies and coins show its own shape, dimmed.
+          <OreArt ore={locked && art === "ore" ? "obsidian" : league.ore} mystery={locked} />
         )}
         {locked && (
           <span className="absolute bottom-[2%] left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-[4px] bg-[#f5c451] px-2.5 py-1 text-[16px] font-medium whitespace-nowrap text-black">
@@ -172,10 +261,10 @@ export function LeagueTile({
           ) : (
             <>
               <p className="text-[24px] font-medium tabular-nums">
-                {weekXp} <span className="text-white/40">/ {Math.max(promotionXp, 5)} XP</span>
+                {weekXp} <span className="text-white/40">{goalXp ? `/ ${goalXp} XP` : "XP this week"}</span>
               </p>
-              <p className="text-[14px] text-white/50">
-                #{rank} this week · top {PROMOTE} move up
+              <p className={cn("text-[14px]", goalXp ? "text-white/50" : "text-up")}>
+                #{rank} this week · {goalXp ? `top ${PROMOTE} move up Monday` : `up to ${LEAGUES[index + 1]?.name.replace(" League", "")} on Monday`}
               </p>
             </>
           ))}

@@ -18,7 +18,7 @@ export function LeaguePage() {
   const now = s.now
   const league = LEAGUES[s.league]
   const next = LEAGUES[s.league + 1]
-  const { table, me, promotionXp, canPromote } = weeklyStatus(s.league, weekId(now), s.weekXp, now)
+  const { table, me, goalXp, canPromote } = weeklyStatus(s.league, weekId(now), s.weekXp, now)
   const left = timeLeft(now)
   const promotedRank = (i: number) => s.history.find((h) => h.from === i && h.to === i + 1)?.rank
 
@@ -70,7 +70,7 @@ export function LeaguePage() {
                 index={i}
                 state={i < s.league ? "achieved" : i === s.league ? "current" : "locked"}
                 weekXp={s.weekXp}
-                promotionXp={promotionXp}
+                goalXp={goalXp}
                 rank={me.rank}
                 promotedRank={promotedRank(i)}
               />
@@ -93,11 +93,11 @@ export function LeaguePage() {
                 <div className="h-1.5 overflow-hidden rounded-full bg-[repeating-linear-gradient(90deg,rgb(255_255_255/0.14)_0_5px,transparent_5px_8px)]">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-[#d4a93c] to-[#f5ddb1] transition-all duration-700"
-                    style={{ width: `${Math.min(100, promotionXp ? (s.weekXp / promotionXp) * 100 : 0)}%` }}
+                    style={{ width: `${Math.min(100, goalXp ? (s.weekXp / goalXp) * 100 : 100)}%` }}
                   />
                 </div>
                 <p className="text-[14px] text-white/60 tabular-nums">
-                  {s.weekXp}/{promotionXp} XP · {left.days}d {left.hours}h left
+                  {goalXp ? `${s.weekXp}/${goalXp} XP · top ${PROMOTE} move up Monday` : `${s.weekXp} XP · you move up on Monday`} · {left.days}d {left.hours}h left
                 </p>
               </div>
               <LeagueNumber n={s.league + 2} />

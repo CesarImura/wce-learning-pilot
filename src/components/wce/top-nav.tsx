@@ -1,19 +1,20 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Coins, FlaskConical, Lock, Search, Sparkles, Trophy } from "lucide-react"
+import { Bell, BookOpen, ChevronDown, ChevronLeft, ChevronRight, Coins, FlaskConical, Lock, Search, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BASE_POINTS, fmtPoints } from "@/lib/progress"
 import { HomeLayoutSwitch, useHomeLayout, usePaywallGroup } from "@/components/prototype-panel"
 import { Disclaimer, openPaywall } from "@/components/wce/paywall"
+import { markIntro, readIntro, useIntro } from "@/lib/intro"
 
 // Mirrors the platform's top bar (Figma "Sidebar" component). Only Student Area
 // is built in this prototype; the other tabs are inert placeholders.
 const TABS: { label: string; href?: string; match?: (p: string) => boolean; locked?: boolean }[] = [
-  { label: "Dashboard" },
+  { label: "Dashboard", href: "/dashboard", match: (p) => p.startsWith("/dashboard") },
   { label: "Student Area" },
   {
     label: "Training",
@@ -54,23 +55,28 @@ export function PointsTracker() {
 }
 
 /**
- * Training Pro badge (fake door, group B only): opens the full list of Pro benefits. It lives in Training's own
+ * Training Pro button (fake door, group B only): opens the full list of Pro benefits. It lives in Training's own
  * header, never in the platform bar: Pro covers Training only, the rest of World Class Edge doesn't change.
+ * Text only and verb first, like the upgrade entries on Mobbin ("Get Pro", Spotify "Explore Premium"); no sparkles,
+ * which now read as an AI feature.
  */
 function ProDoor() {
   if (usePaywallGroup() !== "B") return null
   return (
     <button
       onClick={() => openPaywall("pro_badge")}
-      className="flex h-[38px] items-center gap-1.5 rounded-[4px] bg-[#edd066]/10 px-3 text-[14px] font-medium text-[#edd066] ring-1 ring-[#edd066]/25 transition-colors hover:bg-[#edd066]/15"
+      className="flex h-[38px] items-center rounded-[4px] bg-[#edd066]/10 px-3 text-[14px] font-medium text-[#edd066] ring-1 ring-[#edd066]/25 transition-colors hover:bg-[#edd066]/15"
     >
-      <Sparkles className="size-4" /> Training Pro
+      Get Training Pro
     </button>
   )
 }
 
 export function TopNav() {
   const pathname = usePathname()
+  // Launch: Training carries a New tag until the student has been through the first-lesson primer.
+  const intro = useIntro()
+  const trainingIsNew = !!intro && !intro.primed
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/90 shadow-[0_4px_10px_rgba(0,0,0,0.24)] backdrop-blur">
       <div className="mx-auto flex h-[50px] max-w-[1920px] items-center justify-between gap-6 px-4 lg:px-10">
@@ -83,6 +89,11 @@ export function TopNav() {
                 <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2">
                   <Lock className="size-4" />
                   {t.label}
+                </span>
+              ) : t.label === "Training" && trainingIsNew ? (
+                <span className="flex items-center gap-1.5">
+                  {t.label}
+                  <span className="rounded-[2px] bg-[#e3465b] px-1 text-[10px] leading-4 font-semibold text-white">New</span>
                 </span>
               ) : (
                 t.label
@@ -123,7 +134,7 @@ export function TopNav() {
           <div className="flex items-center gap-2">
             <span className="hidden text-[14px] font-medium whitespace-nowrap text-white/70 min-[1360px]:block">Phillip Krawath</span>
             <span className="rounded-[7px] border border-brand/60 p-[3px]">
-              <Image src="/wce/avatar.png" alt="" width={32} height={32} className="size-8 rounded-[4px] object-cover" />
+              <Image src="/wce/avatar.png" alt="" width={32} height={32} style={{ width: 32, height: 32 }} className="rounded-[4px] object-cover" />
             </span>
             <ChevronDown className="hidden size-5 text-white/60 md:block" />
           </div>
@@ -215,7 +226,8 @@ function TrainingBar() {
   if (!crumb && pathname !== "/courses") return null
   return (
     // Same container as the page below it, so the crumb lines up with the title (the league page is wider).
-    <div className={cn("mx-auto flex min-h-[38px] items-center justify-between gap-3 px-4 pt-5 lg:px-10", crumb?.wide ? "max-w-[1680px]" : "max-w-[1440px]")}>
+    // relative: without it the page glow (absolute, painted later) sits on top of this bar and dims the Pro button.
+    <div className={cn("relative mx-auto flex min-h-[38px] items-center justify-between gap-3 px-4 pt-5 lg:px-10", crumb?.wide ? "max-w-[1680px]" : "max-w-[1440px]")}>
       {crumb ? (
         <nav className="flex items-center gap-1.5 text-[14px] text-white/50">
           <Link href="/courses" className="-ml-1 flex items-center gap-1 rounded-[4px] px-1 py-0.5 transition-colors hover:text-white">
@@ -234,8 +246,14 @@ function TrainingBar() {
 }
 
 /** Page background: black canvas with the blurred navy glow behind the header. */
-export function PageShell({ children }: { children: ReactNode }) {
+export function PageShell({ children, training = true }: { children: ReactNode; training?: boolean }) {
   const hub = useHomeLayout() === "v2"
+  // A student who reaches any Training page past the home (a course, the league, the lab) has found
+  // their way in: Training stops sending them to Lesson 1.
+  const pathname = usePathname()
+  useEffect(() => {
+    if (training && pathname !== "/courses" && !readIntro().routed) markIntro({ routed: true })
+  }, [training, pathname])
   return (
     <div className="relative min-h-dvh overflow-x-clip bg-black">
       <div
@@ -244,12 +262,12 @@ export function PageShell({ children }: { children: ReactNode }) {
         style={{ backgroundImage: "linear-gradient(180deg, rgb(12,30,41) 13%, rgb(49,76,94) 120%)" }}
       />
       <TopNav />
-      {hub ? <TrainingBar /> : <AcademyNav />}
-      <div className={cn("relative", !hub && "pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0")}>{children}</div>
+      {training && (hub ? <TrainingBar /> : <AcademyNav />)}
+      <div className={cn("relative", training && !hub && "pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0")}>{children}</div>
       <footer className="relative mx-auto max-w-[1440px] px-4 pb-10 lg:px-10">
         <Disclaimer />
       </footer>
-      {!hub && <AcademyTabBar />}
+      {training && !hub && <AcademyTabBar />}
       <HomeLayoutSwitch />
     </div>
   )

@@ -166,8 +166,16 @@ const leagueStore = createStore<LeagueState>(
   seedLeague,
 )
 
-// Demo seed for the XP log: a bit of activity earlier this week.
-if (typeof window !== "undefined" && xpStore.read().events.length === 0) {
+// Demo seed for the XP log: a bit of activity earlier this week (only before anything was stored,
+// so a reset learner stays at 0 XP).
+const storedOnce = (key: string) => {
+  try {
+    return localStorage.getItem(key) !== null
+  } catch {
+    return false
+  }
+}
+if (typeof window !== "undefined" && !storedOnce("wce-academy-xp-v1") && xpStore.read().events.length === 0) {
   const start = weekStart().getTime()
   const now = Date.now()
   const seed = [60, 45, 70].map((xp, i) => ({ t: Math.min(now - 60_000, start + (i + 1) * 3_600_000 * 7), xp }))
@@ -195,6 +203,21 @@ export function syncLeagueWeek(now = new Date()) {
   })
 }
 
+/**
+ * Prototype: end this week now. Settles the week on the table as it stands right now (so the result matches the
+ * rank the student sees), applies the promotion or demotion and queues the result screen. Weekly XP starts at 0.
+ */
+export function endLeagueWeek(now = new Date()) {
+  const s = leagueStore.read()
+  const current = weekId(now)
+  const { me } = weeklyStatus(s.league, current, xpInWeek(xpStore.read().events, current), now)
+  const to = me.zone === "promote" ? s.league + 1 : me.zone === "demote" ? s.league - 1 : s.league
+  const result = { week: current, from: s.league, to, rank: me.rank }
+  // The whole XP log moves back a week, so this week's XP becomes last week's and the new week starts empty.
+  xpStore.write({ events: xpStore.read().events.map((e) => ({ ...e, t: e.t - 7 * 86_400_000 })) })
+  leagueStore.write({ league: to, week: current, best: Math.max(s.best, to), history: [...s.history, result].slice(-52), pending: result })
+}
+
 export const dismissLeagueResult = () => leagueStore.write({ ...leagueStore.read(), pending: undefined })
 
 export function readLeague() {
@@ -211,3 +234,10 @@ export function useLeague() {
   return { ...s, now, weekXp: now ? xpInWeek(events, weekId(now)) : 0 }
 }
 
+/** A brand new learner: no streak, no firsts, no XP, in Bronze with no league history. */
+export function resetEngagement() {
+  streakStore.write({ days: [] })
+  firstsStore.write({})
+  xpStore.write({ events: [] })
+  leagueStore.write({ league: 0, week: weekId(), best: 0, history: [] })
+}

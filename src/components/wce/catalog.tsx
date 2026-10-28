@@ -17,7 +17,7 @@ import { courseProgress, fmtPoints, useProgress, type Progress } from "@/lib/pro
 import { cn } from "@/lib/utils"
 import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
-import { useCourseArt } from "@/components/prototype-panel"
+import { resetLearner, useCourseArt } from "@/components/prototype-panel"
 
 type Status = "progress" | "new" | "done" | "soon"
 
@@ -288,16 +288,6 @@ export function AllCourses() {
   )
 }
 
-/** For testers: wipe progress, streak, XP and league state, back to a first visit. */
-function resetDemo() {
-  if (!window.confirm("Reset all Training progress on this device?")) return
-  Object.keys(localStorage)
-    .filter((k) => k.startsWith("wce-academy-"))
-    .forEach((k) => localStorage.removeItem(k))
-  // full reload: the in-memory stores re-read the now empty storage
-  window.location.reload()
-}
-
 /** All exercise types in one place (demo / authoring reference). */
 /** Exercises changed in the pre-demo pass (Oct 2026), tagged on their lab card; the note shows on hover. */
 const UPDATED: Partial<Record<ExerciseKind, string>> = {
@@ -333,7 +323,7 @@ export function ExerciseLab() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={resetDemo}
+            onClick={resetLearner}
             className="flex h-[38px] items-center gap-1.5 rounded-[5px] border border-white/15 px-3 text-[14px] text-white/70 hover:text-white"
           >
             <RotateCcw className="size-4" /> Reset demo

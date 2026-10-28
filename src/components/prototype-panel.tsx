@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, SlidersHorizontal, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COOLDOWN_DAYS, resetPaywallState } from "@/components/wce/paywall"
+import { endLeagueWeek, resetEngagement } from "@/lib/engagement"
+import { resetProgress } from "@/lib/progress"
+import { resetIntro } from "@/lib/intro"
 import {
   reset as resetPrint,
   set as setPrint,
@@ -12,6 +15,48 @@ import {
 } from "@/components/print-objects/settings"
 
 export type Layout = "v1" | "v2"
+
+/**
+ * Back to a learner who never did a lesson in any course: no progress (not even the seeded
+ * Candles lesson), streak, firsts, XP, league history, paywall history, course requests, and the
+ * Training launch (dashboard announcement, first-lesson primer and home tour) still ahead.
+ * Prototype choices (layout, paywall group, corners, course art...) stay as they are.
+ */
+export function resetLearner() {
+  if (!window.confirm("Start over as a new learner? This clears every lesson, streak, XP and league result on this device.")) return
+  clearLearner()
+  // Full reload so every in-memory store and open lesson re-reads the clean state.
+  window.location.reload()
+}
+
+function clearLearner() {
+  resetProgress()
+  resetEngagement()
+  resetPaywallState()
+  resetIntro()
+  try {
+    localStorage.removeItem("wce-training-course-requests")
+  } catch {}
+}
+
+// The demo path from the top. The reset waits until the dashboard is up: done on a Training page,
+// the first-visit redirect would send the student to Lesson 1 before the dashboard (and its launch) shows.
+const REPLAY_KEY = "wce-proto-replay"
+export function requestReplay() {
+  try {
+    sessionStorage.setItem(REPLAY_KEY, "1")
+  } catch {}
+}
+/** Called by the dashboard on mount: a student new to Training, ready for the launch. */
+export function consumeReplay() {
+  try {
+    if (!sessionStorage.getItem(REPLAY_KEY)) return
+    sessionStorage.removeItem(REPLAY_KEY)
+  } catch {
+    return
+  }
+  clearLearner()
+}
 export type PreviewMode = "default" | "wrong" | "right"
 
 const LAYOUT_KEY = "wce-academy-layout"
@@ -65,6 +110,11 @@ const paywallPref = createPref<PaywallGroup>("wce-training-paywall-group", ["A",
 export const usePaywallGroup = paywallPref.use
 export const readPaywallGroup = paywallPref.read
 
+// Paywall design: v1 = the first take (narrow sheet, stacked buttons), v2 = WCE modal with a Free vs Pro table and
+// the price and Subscribe pinned in the footer (Mobbin review, 28 Oct: Brilliant, Duolingo Super, Matter, Elicit).
+const paywallDesignPref = createPref<Layout>("wce-paywall-design", ["v1", "v2"], "v2")
+export const usePaywallDesign = paywallDesignPref.use
+
 // Closed beta: students outside the beta see a waitlist instead of Training.
 const betaPref = createPref<"in" | "out">("wce-training-beta", ["in", "out"], "in")
 export const useBeta = betaPref.use
@@ -77,6 +127,16 @@ const cornersPref = createPref<Corners>("wce-academy-corners", ["8", "12"], "12"
 type CourseArt = "coins" | "print"
 const courseArtPref = createPref<CourseArt>("wce-course-art", ["coins", "print"], "print")
 export const useCourseArt = courseArtPref.use
+
+// League art: the 3D print trophies (metal inks, on a plinth), the v1 topic coins re-struck per league, or the ore renders.
+export type LeagueArt = "print" | "coins" | "ore"
+const leagueArtPref = createPref<LeagueArt>("wce-league-art", ["print", "coins", "ore"], "print")
+export const useLeagueArt = leagueArtPref.use
+
+// Course reward: finishing a course used to show a 20% IQ Capital coupon (placeholder, never approved). Off by default
+// (28 Oct): which rewards Training can give is still open with Amira and Fabio.
+const courseRewardPref = createPref<"off" | "coupon">("wce-course-reward", ["off", "coupon"], "off")
+export const useCourseReward = courseRewardPref.use
 
 // Prototype panel itself: collapsed to its header, and the 3D assets section inside it.
 const panelPref = createPref<"open" | "closed">("wce-proto-panel", ["open", "closed"], "open")
@@ -174,13 +234,18 @@ export function HomeLayoutSwitch() {
   const week = useWeekCard()
   const corners = cornersPref.use()
   const courseArt = courseArtPref.use()
+  const leagueArt = leagueArtPref.use()
+  const courseReward = courseRewardPref.use()
   const paywall = usePaywallGroup()
+  const paywallDesign = usePaywallDesign()
   const beta = useBeta()
   const panel = panelPref.use()
   const threeD = threeDPref.use()
   const print = usePrintSettings()
   const open = panel === "open"
-  const onHome = usePathname() === "/courses"
+  const pathname = usePathname()
+  const onHome = pathname === "/courses"
+  const router = useRouter()
   useEffect(() => {
     document.documentElement.dataset.corners = corners
   }, [corners])
@@ -206,6 +271,43 @@ export function HomeLayoutSwitch() {
       </div>
       {open && (
         <div className="flex max-h-[calc(100dvh-5rem)] w-[184px] flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">Learner</span>
+            <button
+              onClick={resetLearner}
+              title="Start over as if no lesson of any course was ever done"
+              className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+            >
+              Start over
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">League</span>
+            <button
+              onClick={() => {
+                endLeagueWeek()
+                router.push("/league")
+              }}
+              title="End this week now: the top 5 move up, the bottom 5 move down, and the league page shows the result. Weekly XP starts again at 0."
+              className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+            >
+              End week
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[12px] whitespace-nowrap text-[#9e9e9e]">Launch</span>
+            <button
+              onClick={() => {
+                requestReplay()
+                if (pathname === "/dashboard") consumeReplay()
+                else router.push("/dashboard")
+              }}
+              title="Replay the Training launch as a new student: no lessons, streak or XP, Bronze League, then the dashboard announcement, Lesson 1 primer and the home tour after a lesson"
+              className="h-7 rounded-[4px] px-2 text-[12px] font-semibold text-white/60 transition-[background-color,color,scale] duration-150 hover:bg-white/5 hover:text-white active:scale-[0.96]"
+            >
+              Replay
+            </button>
+          </div>
           <Segmented
             label="Layout"
             value={layout}
@@ -233,6 +335,15 @@ export function HomeLayoutSwitch() {
             options={[
               { id: "A", title: "Group A: control, Training always free" },
               { id: "B", title: "Group B: fake door paywall" },
+            ]}
+          />
+          <Segmented
+            label="Paywall design"
+            value={paywallDesign}
+            onChange={paywallDesignPref.set}
+            options={[
+              { id: "v1", title: "First take: narrow sheet, stacked buttons" },
+              { id: "v2", title: "Free vs Pro table, price and Subscribe in the footer" },
             ]}
           />
           <div className="flex items-center justify-between gap-3">
@@ -263,6 +374,25 @@ export function HomeLayoutSwitch() {
             options={[
               { id: "8", title: "Cards at 8px" },
               { id: "12", title: "Cards at 12px" },
+            ]}
+          />
+          <Segmented
+            label="Course reward"
+            value={courseReward}
+            onChange={courseRewardPref.set}
+            options={[
+              { id: "off", title: "No reward on course complete" },
+              { id: "coupon", title: "20% IQ Capital coupon (placeholder)" },
+            ]}
+          />
+          <Segmented
+            label="League art"
+            value={leagueArt}
+            onChange={leagueArtPref.set}
+            options={[
+              { id: "print", title: "Print trophies" },
+              { id: "coins", title: "Metal coins (v1)" },
+              { id: "ore", title: "Ores" },
             ]}
           />
           <Segmented

@@ -6,8 +6,8 @@ export type TopicId = "foundations" | "order-flow" | "edge" | "institutional" | 
 
 /** The raised line pattern struck into the coin face. */
 export type Pattern = "web" | "pinwheel" | "flower" | "blades" | "dome"
-/** Coin alloy. Distinct from the raw league ores. */
-export type Metal = "brass" | "copper" | "silver" | "verdigris" | "champagne"
+/** Coin alloy. Bronze, gold and obsidian are only struck for the league coins (components/academy/league.tsx). */
+export type Metal = "brass" | "copper" | "silver" | "verdigris" | "champagne" | "bronze" | "gold" | "obsidian"
 /** Coin outline. "scallop" is the silhouette of overlapping discs; "vessel" is a rounded triangle with a hole. */
 export type CoinShape = "round" | "octagon" | "scallop" | "vessel"
 

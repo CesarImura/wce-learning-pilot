@@ -11,6 +11,7 @@
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-newsreader);
   --font-wide: var(--font-michroma);
+  --font-poster: var(--font-anton);
   --font-heading: var(--font-sans);
   --color-up: var(--up);
   --color-down: var(--down);
@@ -175,8 +176,81 @@
   animation: day-fill 600ms cubic-bezier(0.3, 1.4, 0.5, 1) var(--delay, 0ms) both;
 }
 
+/* Today's streak day igniting (after Dayrise): the dashed ring closes, an ember catches,
+   the flame grows from it with a little overshoot, then keeps flickering and shedding sparks. */
+@keyframes ignite-spin { to { transform: rotate(360deg); } }
+@keyframes ignite-close { to { stroke-dasharray: 5 0; stroke: #fff1e8; } }
+@keyframes ignite-pulse { 40% { transform: scale(1.12); } }
+@keyframes ignite-fade { to { opacity: 1; } }
+@keyframes ignite-ember {
+  0% { opacity: 0; transform: scale(0); }
+  35% { opacity: 1; transform: scale(1.3); }
+  70% { opacity: 1; transform: scale(0.9); }
+  100% { opacity: 0; transform: translateY(-2px) scale(0.5); }
+}
+@keyframes ignite-grow {
+  0% { opacity: 0; transform: scale(0.08); }
+  25% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ignite-flicker {
+  0% { transform: scale(1, 1) skewX(0deg); }
+  33% { transform: scale(1.03, 0.96) skewX(-3deg); }
+  66% { transform: scale(0.98, 1.05) skewX(2deg); }
+  100% { transform: scale(1.01, 1) skewX(-1deg); }
+}
+@keyframes ignite-core { to { opacity: 0.7; transform: translateY(0.6px) scale(0.94); } }
+@keyframes ignite-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(1); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), -15px) scale(0.3); }
+}
+
+.ignite { animation: ignite-pulse 520ms cubic-bezier(0.3, 1.4, 0.5, 1) var(--delay, 0ms); }
+.ignite-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  stroke: rgb(255 255 255 / 0.45);
+  stroke-dasharray: 2.5 2.5;
+  animation: ignite-spin 8s linear infinite, ignite-close 380ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) forwards;
+}
+.ignite-bg {
+  opacity: 0;
+  background: radial-gradient(circle at 50% 72%, #6a2a10, #2a0f07 70%);
+  box-shadow: 0 0 22px rgb(255 110 40 / 0.45);
+  animation: ignite-fade 420ms ease-out calc(var(--delay, 0ms) + 200ms) forwards;
+}
+.ignite-ember {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ignite-ember 700ms ease-out calc(var(--delay, 0ms) + 300ms) both;
+}
+.ignite-grow {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ignite-grow 680ms cubic-bezier(0.3, 1.5, 0.5, 1) calc(var(--delay, 0ms) + 540ms) both;
+}
+.ignite-flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ignite-flicker 1.3s ease-in-out calc(var(--delay, 0ms) + 1200ms) infinite alternate;
+}
+.ignite-core {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ignite-core 0.9s ease-in-out calc(var(--delay, 0ms) + 1200ms) infinite alternate;
+}
+.ignite-spark {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ignite-spark 1.6s ease-out calc(var(--delay, 0ms) + 1100ms + var(--i) * 530ms) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-spark, .animate-candle, .animate-flicker, .animate-pop, .animate-day-fill {
+  .animate-spark, .animate-candle, .animate-flicker, .animate-pop, .animate-day-fill,
+  .ignite, .ignite-ring, .ignite-bg, .ignite-ember, .ignite-grow, .ignite-flicker, .ignite-core, .ignite-spark {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
@@ -277,4 +351,36 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .pearl-chip { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Training launch on the dashboard: the page goes dark, a sky horizon draws, a candle field
+   rises behind three course objects, then the poster title, the numbers and the actions. */
+@keyframes launch-in { from { opacity: 0; } }
+@keyframes launch-glow { from { opacity: 0; transform: scale(0.6); } }
+@keyframes launch-line { from { transform: scaleX(0); opacity: 1; } 70% { opacity: 1; } to { transform: scaleX(1); opacity: 0.35; } }
+@keyframes launch-candle { from { transform: scaleY(0); opacity: 0; } }
+@keyframes launch-obj { from { opacity: 0; transform: translateY(80px) scale(0.5); } }
+@keyframes launch-letter { from { transform: translateY(105%); filter: blur(6px); } }
+@keyframes launch-rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes launch-leave { to { opacity: 0; transform: scale(1.03); } }
+
+.launch-scrim { animation: launch-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.launch-glow { animation: launch-glow 1400ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both; }
+.launch-line { transform-origin: center; animation: launch-line 900ms cubic-bezier(0.22, 1, 0.36, 1) 350ms both; }
+.launch-candle {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: launch-candle 520ms cubic-bezier(0.3, 1.4, 0.5, 1) calc(600ms + var(--i) * 26ms) both;
+}
+.launch-obj { animation: launch-obj 1000ms cubic-bezier(0.3, 1.3, 0.5, 1) calc(1050ms + var(--i) * 150ms) both; }
+.launch-letter { display: inline-block; animation: launch-letter 800ms cubic-bezier(0.22, 1, 0.36, 1) calc(1500ms + var(--i) * 50ms) both; }
+.launch-rise { animation: launch-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) both; }
+.launch-leave { animation: launch-leave 360ms cubic-bezier(0.4, 0, 1, 1) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-scrim, .launch-glow, .launch-line, .launch-candle, .launch-obj, .launch-letter, .launch-rise, .launch-leave {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
 }

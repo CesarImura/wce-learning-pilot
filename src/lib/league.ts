@@ -109,9 +109,27 @@ export function weeklyStatus(league: number, week: string, yourXp: number, now =
   const me = table.find((s) => s.you)!
   const canPromote = league < LEAGUES.length - 1
   const line = canPromote ? table[PROMOTE - 1] : undefined
+  const inZone = me.rank <= PROMOTE
   // XP needed to pass the current #5 (0 if you're already in the zone).
-  const toPromotion = line && me.rank > PROMOTE ? line.xp - yourXp + 5 : 0
-  return { table, me, canPromote, promotionXp: line?.xp ?? 0, toPromotion }
+  const toPromotion = line && !inZone ? line.xp - yourXp + 5 : 0
+  // The promotion line: #5's XP while you're below it; once you're in, the best XP outside the zone (#6) chasing you.
+  const cutXp = canPromote ? (inZone ? (table[PROMOTE]?.xp ?? 0) : line!.xp) : 0
+  // The score to reach for a "you / goal" readout; 0 once you're in the zone (there's no goal left, just stay ahead).
+  const goalXp = canPromote && !inZone ? yourXp + toPromotion : 0
+  return { table, me, canPromote, cutXp, goalXp, toPromotion }
+}
+
+/**
+ * What happens to you on Monday, said plainly: leagues only move when the week closes, so every standing readout
+ * names the day and the league you'd land in.
+ */
+export function mondayNote(league: number, zone: Standing["zone"], toPromotion: number) {
+  const up = LEAGUES[league + 1]
+  const down = LEAGUES[league - 1]
+  if (zone === "promote" && up) return `In the top ${PROMOTE}: you move up to ${up.name.replace(" League", "")} on Monday`
+  if (zone === "demote" && down) return `Bottom ${DEMOTE}: you'd drop to ${down.name.replace(" League", "")} on Monday`
+  if (!up) return "Top league: keep your place"
+  return `${toPromotion} XP to the top ${PROMOTE}. Leagues move on Monday`
 }
 
 // ---------------------------------------------------------------------------

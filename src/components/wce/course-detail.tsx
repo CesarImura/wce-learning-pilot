@@ -28,7 +28,7 @@ import { syncLeagueWeek, useLeague } from "@/lib/engagement"
 import { LEAGUES, weekId, weeklyStatus } from "@/lib/league"
 import { NewTag } from "./course-card"
 import { TopicCoin } from "./topic-coin"
-import { useCourseArt } from "@/components/prototype-panel"
+import { useCourseArt, useCourseReward } from "@/components/prototype-panel"
 import { CourseReward } from "./paywall"
 import { topicOf } from "@/lib/courses"
 
@@ -162,6 +162,7 @@ function UnitTestNode({ course, unit, progress }: { course: Course; unit: Unit; 
 
 export function CourseDetail({ course }: { course: Course }) {
   const art = useCourseArt()
+  const courseReward = useCourseReward()
   const progress = useProgress()
   const stats = courseStats(course)
   const prog = courseProgress(course, progress)
@@ -232,7 +233,7 @@ export function CourseDetail({ course }: { course: Course }) {
                 <Sparkles className="size-4" /> {stats.exercises} exercises
               </span>
               <span className="flex items-center gap-1.5">
-                <Trophy className="size-4" /> {course.units.length} unit tests
+                <Trophy className="size-4" /> {course.units.length} unit {course.units.length === 1 ? "test" : "tests"}
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="size-4" /> ~{stats.minutes} min
@@ -271,7 +272,7 @@ export function CourseDetail({ course }: { course: Course }) {
             </div>
           </div>
           <CourseLeague />
-          {(finished || previewReward) && (
+          {(finished || previewReward) && courseReward === "coupon" && (
             <div className="border-t border-white/10 p-4">
               <CourseReward courseId={course.id} courseTitle={course.title} compact />
             </div>

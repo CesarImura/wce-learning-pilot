@@ -19,6 +19,9 @@ export const METALS: Record<Metal | "lead", { base: RGB; tarnish: RGB; edge: str
   verdigris: { base: [168, 186, 168], tarnish: [62, 84, 72], edge: "#8ea28f" },
   champagne: { base: [228, 206, 158], tarnish: [104, 88, 58], edge: "#c4ad7c" },
   lead: { base: [118, 118, 122], tarnish: [44, 44, 48], edge: "#5e5e62" },
+  bronze: { base: [200, 128, 72], tarnish: [74, 44, 22], edge: "#a86a3c" },
+  gold: { base: [238, 192, 84], tarnish: [112, 82, 26], edge: "#d0a23e" },
+  obsidian: { base: [96, 100, 132], tarnish: [30, 32, 46], edge: "#4c5170" },
 }
 
 // ---------------------------------------------------------------------------

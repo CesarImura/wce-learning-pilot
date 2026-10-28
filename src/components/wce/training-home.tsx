@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronRight, Flame, FlaskConical, Gift, MessageSquarePlus } from "lucide-react"
 import { OreArt } from "@/components/academy/league"
 import { StandingRow, ZoneDivider } from "@/components/academy/league-page"
@@ -17,15 +18,31 @@ import { fmtPoints, topicProgress, useProgress, type Progress } from "@/lib/prog
 import { TOPIC_LIST } from "@/lib/topics"
 import { track } from "@/lib/analytics"
 import { cn } from "@/lib/utils"
-import { useBeta, useHomeLayout, usePaywallGroup, useWeekCard } from "@/components/prototype-panel"
-import { ProBadge, openCourseRequest, proGate } from "./paywall"
+import { useBeta, useHomeLayout, useWeekCard } from "@/components/prototype-panel"
+import { openCourseRequest } from "./paywall"
 import { Catalog, ContinueCard, CourseRow, statusOf } from "./catalog"
 import { TopicCoin } from "./topic-coin"
+import { HomeTour } from "./home-tour"
+import { INTRO_LESSON_HREF, markIntro, useIntro } from "@/lib/intro"
 
 /** /courses: the prototype panel picks between the original catalog (v1) and this home (v2). */
 export function TrainingEntry() {
   const layout = useHomeLayout()
-  if (useBeta() === "out") return <Waitlist />
+  const beta = useBeta()
+  const intro = useIntro()
+  const progress = useProgress()
+  const router = useRouter()
+  // Training launch: a student who hasn't been through the first-lesson primer goes straight to Lesson 1
+  // (with its context screen) instead of a tour of where things live.
+  // Only once: after that the home is always reachable (the primer still waits on Lesson 1 itself).
+  const firstVisit = beta === "in" && !!intro && !intro.routed && !intro.primed && Object.keys(progress).length === 0
+  useEffect(() => {
+    if (!firstVisit) return
+    markIntro({ routed: true })
+    router.replace(INTRO_LESSON_HREF)
+  }, [firstVisit, router])
+  if (beta === "out") return <Waitlist />
+  if (!intro || firstVisit) return <div className="min-h-[70dvh]" />
   return layout === "v1" ? <Catalog /> : <TrainingHome />
 }
 
@@ -64,28 +81,33 @@ function Waitlist() {
 
 export function TrainingHome() {
   const progress = useProgress()
+  const intro = useIntro()
+  // The home tour waits for the first finished lesson, then runs once; only for students who came in
+  // through the launch (primer seen), so people already using Training aren't stopped by it.
+  const tour = !!intro && intro.primed && !intro.toured && Object.keys(progress).length > 0
   return (
     <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-24 lg:px-10">
       {/* Phones read top to bottom: continue, league, your week, courses, coins. Desktop gives the league the right column,
           starting level with the continue card and one screen tall so the whole board has room. */}
       <h1 className="sr-only">Training</h1>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="lg:col-start-1">
+        <div className="lg:col-start-1" data-tour="continue">
           <ContinueCard progress={progress} />
         </div>
-        <aside className="lg:sticky lg:top-[70px] lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-start">
+        <aside className="lg:sticky lg:top-[70px] lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-start" data-tour="league">
           <LeagueSpotlight />
         </aside>
-        <div className="lg:col-start-1">
+        <div className="lg:col-start-1" data-tour="week">
           <WeekCard progress={progress} />
         </div>
-        <div className="lg:col-start-1">
+        <div className="lg:col-start-1" data-tour="courses">
           <CoursesPreview progress={progress} />
         </div>
         <div className="lg:col-start-1">
           <CollectionStrip progress={progress} />
         </div>
       </div>
+      {tour && <HomeTour progress={progress} />}
     </div>
   )
 }
@@ -127,12 +149,11 @@ function CoursesPreview({ progress }: { progress: Progress }) {
   )
 }
 
-/** The 4th card: ask for a course. In the paywall test it is one of the Pro doors. */
+/** The 4th card: ask for a course. Free for everyone, so it opens the form directly (no paywall, no Pro badge). */
 function RequestCourseRow() {
-  const group = usePaywallGroup()
   return (
     <button
-      onClick={() => proGate("request_card", openCourseRequest)}
+      onClick={openCourseRequest}
       className="group flex w-full flex-wrap items-center gap-4 p-3 text-left transition-colors hover:bg-white/[0.03] sm:flex-nowrap"
     >
       <span className="grid w-[76px] shrink-0 place-items-center py-1 sm:w-[104px]">
@@ -143,7 +164,6 @@ function RequestCourseRow() {
       <span className="min-w-0 flex-1 space-y-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-[17px] font-medium">Request a course</span>
-          {group === "B" && <ProBadge />}
         </span>
         <span className="block text-[14px] text-white/55">Futures, CFDs, prop firm rules… tell us what to build next.</span>
       </span>
@@ -209,9 +229,9 @@ function LeagueSpotlight() {
   if (!s.now) return <div className="glass h-[640px] animate-pulse" />
   const league = LEAGUES[s.league]
   const next = LEAGUES[s.league + 1]
-  const { table, me, canPromote, promotionXp, toPromotion } = weeklyStatus(s.league, weekId(s.now), s.weekXp, s.now)
+  const { table, me, canPromote, cutXp, goalXp, toPromotion } = weeklyStatus(s.league, weekId(s.now), s.weekXp, s.now)
   const left = timeLeft(s.now)
-  const pct = Math.min(100, promotionXp ? (s.weekXp / promotionXp) * 100 : 100)
+  const pct = Math.min(100, goalXp ? (s.weekXp / goalXp) * 100 : 100)
   const below = LEAGUES.slice(0, s.league)
   const above = LEAGUES.slice(s.league + 1)
 
@@ -261,7 +281,7 @@ function LeagueSpotlight() {
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-[14px] font-medium">Quest to {next.name.replace(" League", "")}</p>
               <p className={cn("text-[13px] tabular-nums", me.zone === "promote" ? "text-up" : "text-white/60")}>
-                {me.zone === "promote" ? "In the promotion zone" : `${toPromotion} XP to go`}
+                {me.zone === "promote" ? "You move up on Monday" : `${toPromotion} XP to the top ${PROMOTE}`}
               </p>
             </div>
             {/* The track runs from this league's ore to the next one's; the marker is you. */}
@@ -283,7 +303,7 @@ function LeagueSpotlight() {
             <div className="flex justify-between gap-3 text-[12px] text-white/50 tabular-nums">
               <span>You · {s.weekXp} XP</span>
               <span>
-                Top {PROMOTE} · {promotionXp} XP
+                {me.zone === "promote" ? `#${PROMOTE + 1} · ${cutXp} XP` : `Top ${PROMOTE} · ${cutXp} XP`}
               </span>
             </div>
             <ul className="flex flex-wrap gap-1.5">
@@ -332,8 +352,8 @@ function YourWeekV1({ progress }: { progress: Progress }) {
     { v: stats.testsPassed, l: "Units mastered" },
   ]
   return (
-    <section className="glass overflow-hidden">
-      <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8">
+    <section className="glass @container overflow-hidden">
+      <div className="grid gap-5 p-5 @3xl:grid-cols-[minmax(0,1fr)_auto] @3xl:items-center @3xl:gap-8">
         <div className="flex flex-col gap-4">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Flame className={cn("size-6", activeToday ? "fill-[#ff9f43] text-[#ffcf6e]" : "text-white/40")} />
@@ -358,7 +378,7 @@ function YourWeekV1({ progress }: { progress: Progress }) {
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-6 border-t border-white/10 pt-4 text-center md:border-t-0 md:border-l md:pt-0 md:pl-8">
+        <div className="grid grid-cols-3 gap-6 border-t border-white/10 pt-4 text-center @3xl:border-t-0 @3xl:border-l @3xl:pt-0 @3xl:pl-8">
           {totals.map((t) => (
             <div key={t.l} className="flex flex-col gap-0.5">
               <span className="text-[22px] leading-7 font-medium tabular-nums">{t.v}</span>
@@ -392,9 +412,9 @@ function YourWeek({ progress }: { progress: Progress }) {
     { v: stats.testsPassed, l: "Units mastered" },
   ]
   return (
-    <section className="glass overflow-hidden">
-      <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,400px)_minmax(0,1fr)] md:gap-0">
-        <div className="flex flex-col gap-4 md:pr-8">
+    <section className="glass @container overflow-hidden">
+      <div className="grid gap-5 p-5 @3xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)] @3xl:gap-0">
+        <div className="flex flex-col gap-4 @3xl:pr-8">
           <div className="flex h-8 items-center justify-between gap-3">
             <p className="flex items-center gap-2">
               <Flame className={cn("-ml-0.5 size-6", activeToday ? "fill-[#ff9f43] text-[#ffcf6e]" : "text-white/40")} />
@@ -430,7 +450,7 @@ function YourWeek({ progress }: { progress: Progress }) {
             })}
           </ol>
         </div>
-        <div className="grid grid-cols-3 items-center border-t border-white/10 pt-5 text-center md:border-t-0 md:border-l md:pt-0 md:pl-8">
+        <div className="grid grid-cols-3 items-center border-t border-white/10 pt-5 text-center @3xl:border-t-0 @3xl:border-l @3xl:pt-0 @3xl:pl-8">
           {totals.map((t) => (
             <div key={t.l} className="flex flex-col gap-1">
               <span className="text-[24px] leading-7 font-medium tabular-nums">{t.v}</span>

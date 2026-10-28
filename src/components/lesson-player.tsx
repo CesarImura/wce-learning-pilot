@@ -8,7 +8,6 @@ import {
   Flame,
   Lightbulb,
   Play,
-  HeartCrack,
   RotateCcw,
   TrendingUp,
   Trophy,
@@ -20,7 +19,7 @@ import { cn } from "@/lib/utils"
 import type { ExerciseKind, Lesson, Step } from "@/lib/lessons"
 import { POINTS_PER_CORRECT, POINTS_PER_RETRY, courseLessons, getCourse } from "@/lib/courses"
 import { courseProgress, readProgress, recordLesson } from "@/lib/progress"
-import { LEAGUES, academyStats, weekId, weeklyStatus, type League } from "@/lib/league"
+import { LEAGUES, academyStats, mondayNote, weekId, weeklyStatus, type League } from "@/lib/league"
 import { addXp, claimFirst, readLeague, recordActivity, setSound, useSound, type FirstKind } from "@/lib/engagement"
 import { playSfx } from "@/lib/sound"
 import {
@@ -31,13 +30,16 @@ import {
   Sparks,
   StreakScreen,
   Toast,
+  useCountUp,
 } from "@/components/academy/delight"
 import { ReviewPanel, VideoSheet, fmtTime } from "@/components/academy/review"
 import { OreArt } from "@/components/academy/league"
 import type { ExerciseProps, Feedback } from "@/components/exercises/shared"
-import { PrototypePanel, type Layout, type PreviewMode } from "@/components/prototype-panel"
+import { PrototypePanel, useCourseReward, type Layout, type PreviewMode } from "@/components/prototype-panel"
 import { CourseReward, Disclaimer, onLessonCompleted, onUnitOnePassed, proGate } from "@/components/wce/paywall"
-import { TOPICS } from "@/lib/topics"
+import { TOPICS, type TopicId } from "@/lib/topics"
+import { TopicCoin } from "@/components/wce/topic-coin"
+import { HEART_MODEL, PrintObject } from "@/components/print-objects/print-object"
 import { CandleBuilder, CandleScrub } from "@/components/exercises/candle-exercises"
 import {
   DrawSupport,
@@ -158,6 +160,7 @@ export function LessonPlayer({
   const [retryNow, setRetryNow] = useState(false)
   // Prototype review switch: show any exercise as the learner would see it unanswered, wrong or right.
   const [preview, setPreview] = useState<PreviewMode>("default")
+  const courseReward = useCourseReward()
   // "+10 XP" pop under the header counter, one per right answer.
   const [xpPop, setXpPop] = useState<{ id: number; amount: number } | null>(null)
   // The "Why?" explanation, open for the feedback it was asked about (closes itself when the step moves on).
@@ -186,7 +189,6 @@ export function LessonPlayer({
   const course = getCourse(courseId)
   const topic = course ? TOPICS[course.topic] : undefined
   const mentorName = course?.mentor?.split(" ")[0]
-  const coinSrc = `/wce/coins/${course?.topic ?? "foundations"}-front.png`
   // Unit-test questions point back to the lesson (and video) they come from.
   const clipLesson =
     (step.source && course ? courseLessons(course).find((l) => l.id === step.source) : undefined) ?? lesson
@@ -209,14 +211,14 @@ export function LessonPlayer({
   // Finishing the last unit test completes the course: that earns the IQ Capital coupon.
   const courseDone = done && !!test && !practice && !!course && courseProgress(course, readProgress()).testsPassed >= course.units.length
 
-  // Preview: once the exercise has filled in its scripted answer, show the feedback it produces.
-  // Nothing here touches hearts, XP or the review list.
+  // Preview: once the exercise has filled in its scripted answer, grade it like a real Check, so a demo
+  // walked through with Right or Wrong earns XP, costs hearts and fills the review list as a student would.
   useEffect(() => {
     if (preview === "default" || isLearn || feedback || done) return
     const want = preview === "right"
     const t = setTimeout(() => {
       const fb = checker.current?.()
-      setFeedback(
+      gradeRef.current(
         fb && fb.correct === want
           ? fb
           : { correct: want, detail: `Preview only: this exercise has no scripted ${want ? "right" : "wrong"} answer yet, so it shows the feedback layout without its real copy.` },
@@ -235,13 +237,20 @@ export function LessonPlayer({
     checker.current = fn
     setReady(!!fn)
   }, [])
+  // The preview effect grades through a ref, so it always uses this render's state (combo, hearts, retries).
+  const gradeRef = useRef(grade)
+  useEffect(() => {
+    gradeRef.current = grade
+  })
   const clearToast = useCallback(() => setToast(null), [])
   // Long exercises shrink a little to fit the card on laptop screens.
   const [fitRoot, scrollBox, fitContent] = useFitScale(`${attempt}-${index}-${done}`)
 
   function check() {
-    if (!checker.current) return
-    const fb = checker.current()
+    if (checker.current) grade(checker.current())
+  }
+
+  function grade(fb: Feedback) {
     // Accuracy counts first attempts only; a second try can't raise or lower it.
     if (!isRetry) setGraded((g) => ({ right: g.right + (fb.correct ? 1 : 0), total: g.total + 1 }))
 
@@ -419,11 +428,13 @@ export function LessonPlayer({
     return (
       <Backdrop>
         <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center justify-center gap-7 px-6 py-12 text-center">
-          <div className="grid size-28 place-items-center rounded-full border border-down/30 bg-down/10 animate-in zoom-in-50 duration-500">
-            <HeartCrack className="size-12 text-down" />
+          {/* The broken heart is a print object, like the course and league art. */}
+          <div className="relative size-36 animate-in zoom-in-75 duration-500">
+            <div aria-hidden className="absolute inset-[15%] rounded-full bg-down/15 blur-3xl" />
+            <PrintObject model={HEART_MODEL} active className="absolute inset-0" />
           </div>
           <div className="space-y-2">
-            <p className="eyebrow">Out of hearts</p>
+            <p className="text-[14px] font-medium text-white/60">Out of hearts</p>
             <h1 className="font-serif text-[36px] leading-tight font-medium tracking-[-0.02em]">Not this time</h1>
             <p className="text-[15px] text-white/60">
               You got {graded.right} of {graded.total} right. The <span className="text-gold">+{test.bonus} bonus</span>{" "}
@@ -453,7 +464,7 @@ export function LessonPlayer({
     return (
       <Backdrop>
         {current === "streak" && streakInfo ? (
-          <StreakScreen streak={streakInfo.streak} week={streakInfo.week} onContinue={shift} />
+          <StreakScreen ignite streak={streakInfo.streak} week={streakInfo.week} onContinue={shift} />
         ) : (
           <FirstScreen kind={current as FirstKind} onContinue={shift} />
         )}
@@ -466,14 +477,17 @@ export function LessonPlayer({
     return (
       <Backdrop>
         <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-7 px-6 text-center">
-          <div className="relative">
+          {/* The course's print object, like the unit test result: practice belongs to the course. */}
+          <div className="relative mt-2 mb-4">
             {fixed === graded.total && <Sparks count={20} spread={150} />}
-            <div className="grid size-28 place-items-center rounded-full border border-brand/40 bg-brand/10">
+            {course ? (
+              <TopicCoin topicId={course.topic} size={144} autoplay={fixed === graded.total} className="relative animate-in zoom-in-75 duration-500" />
+            ) : (
               <RotateCcw className="size-12 text-brand-pale" />
-            </div>
+            )}
           </div>
           <div className="space-y-2">
-            <p className="eyebrow">Mistakes practiced</p>
+            <p className="text-[14px] font-medium text-white/60">Mistakes practiced</p>
             <h1 className="font-serif text-[36px] leading-tight">
               {fixed} of {graded.total} fixed
             </h1>
@@ -521,7 +535,9 @@ export function LessonPlayer({
           flawlessBonus={flawless ? test.flawlessBonus : 0}
           backHref={backHref}
           league={leagueSnap}
-          reward={courseDone && course ? <CourseReward courseId={course.id} courseTitle={course.title} /> : null}
+          topicId={course?.topic}
+          courseTitle={courseDone && course ? course.title : undefined}
+          reward={courseDone && course && courseReward === "coupon" ? <CourseReward courseId={course.id} courseTitle={course.title} /> : null}
           review={
             missed.length > 0 ? (
               <ReviewPanel courseId={courseId} lesson={lesson} missed={missed} onPracticeMistakes={practiceMistakes} />
@@ -536,22 +552,20 @@ export function LessonPlayer({
   if (done) {
     return (
       <Backdrop>
-        <main className="mx-auto flex min-h-dvh w-full max-w-[582px] flex-col items-center justify-center gap-10 px-4 py-12 md:max-w-[550px] md:gap-14 md:px-0 md:py-20">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={coinSrc} alt="" width={160} height={160} className="size-32 object-contain animate-in zoom-in-75 duration-500 md:size-40" />
+        {/* One screen tall: the league is the hero (its standing is what the lesson moved), stats in one compact row. */}
+        <main className="mx-auto flex min-h-dvh w-full max-w-[582px] flex-col items-center justify-center gap-6 px-4 py-8 md:max-w-[550px] md:gap-8 md:py-10">
+          {leagueSnap && <OreArt ore={leagueSnap.league.ore} className="size-36 animate-in zoom-in-75 duration-500 md:size-48" />}
           <div className="flex w-full flex-col items-center gap-2 text-center">
             <p className="text-[14px] leading-4 font-medium text-[#9e9e9e]">Lesson complete</p>
-            <h1 className="text-[24px] leading-8 tracking-[-0.6px] text-white">{lesson.title}</h1>
+            <h1 className="text-[24px] leading-8 tracking-[-0.6px] text-balance text-white">{lesson.title}</h1>
+            {leagueSnap && <LeagueLine snap={leagueSnap} />}
           </div>
-          <div className="flex w-full flex-col gap-1">
-            <div className="flex w-full gap-1">
-              <EndStat icon="/wce/lesson/heart.svg" value={hearts} label="Hearts" tone="text-down" />
-              <EndStat icon="/wce/lesson/xp.svg" value={`+${points}`} label="XP" tone="text-[#ffd36e]" />
-              <EndStat icon="/wce/lesson/check.svg" value={`${accuracy}%`} label="Accuracy" tone="text-up" />
-            </div>
-            {leagueSnap && <LeagueRow snap={leagueSnap} />}
+          <div className="flex w-full gap-1">
+            <EndStat icon="/wce/lesson/heart.svg" value={hearts} label="Hearts" tone="text-down" />
+            <EndStat icon="/wce/lesson/xp.svg" value={`+${points}`} label="XP" tone="text-[#ffd36e]" />
+            <EndStat icon="/wce/lesson/check.svg" value={`${accuracy}%`} label="Accuracy" tone="text-up" />
           </div>
-          <div className="flex w-full flex-col gap-4">
+          <div className="flex w-full flex-col gap-3">
             <Link href={backHref} className={cn(lessonButton, "bg-white text-black hover:bg-white/90")}>
               Continue
             </Link>
@@ -682,8 +696,6 @@ export function LessonPlayer({
               >
                 {isLearn && (
                   <div className="flex flex-col items-center gap-4 text-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={coinSrc} alt="" width={64} height={64} className="size-16 object-contain" />
                     <div className="flex flex-col gap-1">
                       {topic && <p className="text-[12px] leading-4" style={{ color: topic.color }}>{topic.name}</p>}
                       <p className="text-[24px] leading-8 tracking-[-0.6px] text-white">{course?.title ?? lesson.title}</p>
@@ -1046,39 +1058,42 @@ function WhyDialog({
 
 function EndStat({ icon, value, label, tone }: { icon: string; value: ReactNode; label: string; tone: string }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[12px] bg-[#1c1c1c] p-4 md:p-6">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={icon} alt="" width={20} height={20} />
-      <span className={cn("text-[24px] leading-8 tracking-[-0.6px] tabular-nums", tone)}>{value}</span>
-      <span className="text-[16px] leading-5 font-medium text-[#8f8f8f]">{label}</span>
+    <div className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[12px] bg-[#1c1c1c] px-3 py-4">
+      <span className={cn("flex items-center gap-2 text-[24px] leading-8 tracking-[-0.6px] tabular-nums", tone)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={icon} alt="" width={18} height={18} />
+        {value}
+      </span>
+      <span className="text-[14px] leading-5 font-medium text-[#8f8f8f]">{label}</span>
     </div>
   )
 }
 
-/** This week's league standing after the lesson (Figma 10580:24504). */
-function LeagueRow({ snap }: { snap: LeagueSnap }) {
+/**
+ * This week's league standing after the lesson, under the title (the league art is the hero above). The rank counts
+ * from where the student was to where the lesson put them, so a climb is felt right away; the note says when
+ * the league itself changes (Monday).
+ */
+function LeagueLine({ snap }: { snap: LeagueSnap }) {
   const climbed = snap.before.rank - snap.after.rank
+  const rank = useCountUp(snap.after.rank, snap.before.rank, 1100, 400)
+  const index = LEAGUES.findIndex((l) => l.id === snap.league.id)
+  const note = mondayNote(index, snap.zone, snap.toPromotion)
   return (
-    <div className="flex items-center gap-4 rounded-[12px] bg-[#1c1c1c] p-4 md:gap-6 md:p-6">
-      <div className="shrink-0 rounded-full border-2 border-[#3d3d3d] p-0.5">
-        <div className="size-14 overflow-hidden rounded-full bg-[#262626]">
-          <OreArt ore={snap.league.ore} className="size-full p-0 ring-0" />
-        </div>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 text-[16px] leading-6 tracking-[-0.6px] text-white">
-        <span className="font-bold">#{snap.after.rank}</span>
-        <span>{snap.league.name}</span>
+    <div className="flex flex-col items-center gap-1">
+      <p className="flex flex-wrap items-center justify-center gap-x-2 text-[16px] leading-6 text-[#cfcfd0] tabular-nums">
+        <span>
+          <span className="font-semibold text-white">#{rank}</span> in {snap.league.name}
+        </span>
         {climbed > 0 && (
-          <span className="flex items-center gap-1 leading-5 font-medium tracking-normal text-up">
+          <span className="flex items-center gap-1 font-medium text-up animate-in fade-in zoom-in-75 [animation-delay:1.4s] [animation-fill-mode:both] duration-300">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/wce/lesson/up-triangle.svg" alt="" width={16} height={12} />
+            <img src="/wce/lesson/up-triangle.svg" alt="" width={14} height={10} />
             {climbed} place{climbed > 1 ? "s" : ""}
           </span>
         )}
-      </div>
-      <span className="shrink-0 rounded-[6px] bg-[#2e2e2e] px-3 py-2 text-[14px] leading-4 tracking-[-0.6px] text-white tabular-nums">
-        {snap.after.xp} XP
-      </span>
+      </p>
+      <p className={cn("text-[14px] leading-5", snap.zone === "promote" ? "text-up" : snap.zone === "demote" ? "text-down" : "text-[#8f8f8f]")}>{note}</p>
     </div>
   )
 }
@@ -1096,7 +1111,13 @@ function TestReward({
   league,
   review,
   reward,
+  topicId,
+  courseTitle,
 }: {
+  /** The course topic, for its print object as the hero. */
+  topicId?: TopicId
+  /** Set when this test finished the whole course. */
+  courseTitle?: string
   unitTitle: string
   right: number
   total: number
@@ -1118,16 +1139,21 @@ function TestReward({
   const totalPts = rows.reduce((n, r) => n + r.value, 0)
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center justify-center gap-7 px-6 py-12 text-center">
-      <div className="relative">
+      {/* The course's own print object, playing its gesture: the same art the student sees on the course card. */}
+      {/* Extra room below: tall objects (the candle) grow during their gesture. */}
+      <div className="relative mt-2 mb-6">
         <Sparks count={28} spread={180} />
-        <div className="absolute inset-0 animate-ping rounded-full bg-gold/20 [animation-duration:2s]" />
-        <div className="relative grid size-32 place-items-center rounded-full border-2 border-gold/60 bg-gradient-to-b from-gold/30 to-gold/5 shadow-[0_0_80px_rgba(255,218,116,0.45)] animate-in zoom-in-50 spin-in-12 duration-700">
-          <Trophy className="size-14 text-gold" strokeWidth={1.75} />
-        </div>
+        <div aria-hidden className="absolute inset-[10%] rounded-full bg-gold/15 blur-3xl" />
+        {topicId ? (
+          <TopicCoin topicId={topicId} size={160} autoplay className="relative animate-in zoom-in-75 duration-700" />
+        ) : (
+          <Trophy className="relative size-14 text-gold" strokeWidth={1.75} />
+        )}
       </div>
       <div className="space-y-2">
-        <p className="text-[12px] font-semibold tracking-[0.2em] text-gold uppercase">Unit mastered</p>
-        <h1 className="font-serif text-[36px] leading-tight font-medium tracking-[-0.02em]">{unitTitle}</h1>
+        <p className="text-[14px] font-medium text-gold">{courseTitle ? "Course complete" : "Unit mastered"}</p>
+        <h1 className="font-serif text-[36px] leading-tight font-medium tracking-[-0.02em]">{courseTitle ?? unitTitle}</h1>
+        {courseTitle && <p className="text-[15px] text-white/60">Last unit: {unitTitle}</p>}
       </div>
       <div className="glass w-full divide-y divide-white/10 text-left">
         {rows.map((r, i) => (

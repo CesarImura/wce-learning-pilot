@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono, Michroma, Newsreader } from "next/font/google"
+import { Anton, Geist, Geist_Mono, Michroma, Newsreader } from "next/font/google"
 import { CoinInspector } from "@/components/coin/coin-inspector"
 import { PaywallHost } from "@/components/wce/paywall"
 import "./globals.css"
@@ -27,6 +27,13 @@ const michroma = Michroma({
   weight: "400",
 })
 
+// Poster face for hero titles (web stand-in for Kaneda Gothic, per the WCE design system).
+const anton = Anton({
+  variable: "--font-anton",
+  subsets: ["latin"],
+  weight: "400",
+})
+
 export const metadata: Metadata = {
   title: "World Class Edge · Training",
   description: "Learn trading by doing: interactive chart exercises.",
@@ -43,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${michroma.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${michroma.variable} ${anton.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

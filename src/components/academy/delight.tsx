@@ -4,9 +4,9 @@
 // one-time "firsts" and an animated league progress bar. WCE-styled: gold, ore and
 // chart motifs instead of cartoon mascots. Every full-screen moment can be tapped away.
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react"
 import { Flame, Heart, Sparkles, Trophy } from "lucide-react"
-import type { League } from "@/lib/league"
+import { LEAGUES, mondayNote, type League } from "@/lib/league"
 import { cn } from "@/lib/utils"
 import { OreArt } from "./league"
 
@@ -167,15 +167,76 @@ function EndScreen({ children, onContinue, cta = "Continue" }: { children: React
   )
 }
 
+/**
+ * Today's streak day catching fire, after Dayrise: the dashed "to do" ring closes, an ember
+ * catches at the bottom, the flame grows out of it, then it keeps flickering and shedding sparks.
+ * Timing lives in globals.css (.ignite-*), all offset by `delay`.
+ */
+export function IgniteDay({ size = 36, delay = 500 }: { size?: number; delay?: number }) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, "")
+  return (
+    <span
+      className="ignite relative grid shrink-0 place-items-center"
+      style={{ width: size, height: size, "--delay": `${delay}ms` } as CSSProperties}
+    >
+      <span className="ignite-bg absolute inset-[2px] rounded-full" />
+      <svg viewBox="0 0 40 40" className="absolute inset-0 overflow-visible" aria-hidden>
+        <circle className="ignite-ring" cx="20" cy="20" r="18.5" fill="none" strokeWidth="2" pathLength={60} />
+      </svg>
+      <svg viewBox="0 0 24 24" className="relative size-[78%] translate-y-[4%] overflow-visible" aria-hidden>
+        <defs>
+          <linearGradient id={`${id}f`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ff4d2e" />
+            <stop offset="1" stopColor="#ff9f43" />
+          </linearGradient>
+          <radialGradient id={`${id}c`} cx="0.5" cy="0.75" r="0.6">
+            <stop offset="0" stopColor="#fff1c2" />
+            <stop offset="0.55" stopColor="#ffcf6e" />
+            <stop offset="1" stopColor="#ffb347" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <g className="ignite-grow">
+          <g className="ignite-flicker">
+            <path
+              fill={`url(#${id}f)`}
+              d="M12 22C7.6 22 5 19 5 15.2c0-3.6 2.4-5.8 3.6-8 .4 1.6 1.2 2.6 2.2 3 -.2-3.6 1.6-6.6 4.4-8.2 -.4 2.6.8 4.6 2 6.4 1.2 1.8 1.8 4 1.8 6.8C19 19 16.4 22 12 22Z"
+            />
+            <path
+              className="ignite-core"
+              fill={`url(#${id}c)`}
+              d="M12 21c-2.4 0-3.6-1.6-3.6-3.4 0-2 1.6-3.2 2.8-5 .4 1.4 1.4 2 2.2 2.2 0-.8.4-1.4.8-1.8 1 1.4 1.4 2.8 1.4 4.6C15.6 19.4 14.4 21 12 21Z"
+            />
+          </g>
+        </g>
+        <circle className="ignite-ember" cx="12" cy="20" r="1.8" fill="#ffd27a" />
+        {[-3, 2, -1].map((dx, i) => (
+          <circle
+            key={i}
+            className="ignite-spark"
+            cx={14 + i * 0.6}
+            cy="3.5"
+            r="0.9"
+            fill="#ffcf6e"
+            style={{ "--i": i, "--dx": `${dx}px` } as CSSProperties}
+          />
+        ))}
+      </svg>
+    </span>
+  )
+}
+
 /** Duolingo-style daily streak: flame, count-up and the week filling in. */
 export function StreakScreen({
   streak,
   week,
   onContinue,
+  ignite = false,
 }: {
   streak: number
   week: { label: string; active: boolean; today: boolean }[]
   onContinue: () => void
+  /** Today's day catches fire instead of popping in (v2). */
+  ignite?: boolean
 }) {
   const n = useCountUp(streak, Math.max(0, streak - 1), 700, 300)
   return (
@@ -195,16 +256,20 @@ export function StreakScreen({
         {week.map((d, i) => (
           <div key={i} className="flex flex-col items-center gap-1.5">
             <span className={cn("text-[12px]", d.today ? "text-white" : "text-white/40")}>{d.label}</span>
-            <span
-              className={cn(
-                "grid size-8 place-items-center rounded-full",
-                d.active ? "bg-gradient-to-b from-[#ffcf6e] to-[#ff9f43] text-black" : "bg-white/[0.06]",
-                d.today && d.active && "animate-day-fill ring-2 ring-[#ffcf6e]/40",
-              )}
-              style={{ "--delay": "500ms" } as CSSProperties}
-            >
-              {d.active && <Flame className="size-4" />}
-            </span>
+            {ignite && d.today && d.active ? (
+              <IgniteDay size={32} delay={600} />
+            ) : (
+              <span
+                className={cn(
+                  "grid size-8 place-items-center rounded-full",
+                  d.active ? "bg-gradient-to-b from-[#ffcf6e] to-[#ff9f43] text-black" : "bg-white/[0.06]",
+                  d.today && d.active && "animate-day-fill ring-2 ring-[#ffcf6e]/40",
+                )}
+                style={{ "--delay": "500ms" } as CSSProperties}
+              >
+                {d.active && <Flame className="size-4" />}
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -248,7 +313,6 @@ export function LeagueStanding({
   after,
   toPromotion,
   zone,
-  canPromote,
 }: {
   league: League
   before: { rank: number; xp: number }
@@ -277,13 +341,7 @@ export function LeagueStanding({
           <span className="ml-auto text-[14px] text-white/70 tabular-nums">{xp} XP</span>
         </p>
         <p className={cn("text-[12px]", zone === "promote" ? "text-up" : zone === "demote" ? "text-down" : "text-white/45")}>
-          {zone === "promote"
-            ? "You're in the promotion zone. Hold it until Monday!"
-            : zone === "demote"
-              ? "Demotion zone. A lesson or two gets you out."
-              : canPromote
-                ? `${toPromotion} XP to the promotion zone`
-                : "Top league: keep your place"}
+          {mondayNote(LEAGUES.findIndex((l) => l.id === league.id), zone, toPromotion)}
         </p>
       </div>
     </div>
@@ -303,6 +361,7 @@ export function DelightPreview() {
     { id: "halfway", label: "Unit test halfway" },
     { id: "toast", label: "Toast: nice recovery" },
     { id: "streak", label: "Daily streak" },
+    { id: "streak-ignite", label: "Daily streak: ignite" },
     { id: "first", label: "First lesson" },
     { id: "flawless", label: "First flawless test" },
   ]
@@ -327,9 +386,10 @@ export function DelightPreview() {
       {open === "combo5" && <ComboMoment combo={5} bonus={10} onDone={close} />}
       {open === "halfway" && <HalfwayMoment hearts={3} onDone={close} />}
       {open === "toast" && <Toast onDone={close}>↗ Nice recovery</Toast>}
-      {(open === "streak" || open === "first" || open === "flawless") && (
+      {(open === "streak" || open === "streak-ignite" || open === "first" || open === "flawless") && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black">
           {open === "streak" && <StreakScreen streak={3} week={week} onContinue={close} />}
+          {open === "streak-ignite" && <StreakScreen ignite streak={3} week={week} onContinue={close} />}
           {open === "first" && <FirstScreen kind="first-lesson" onContinue={close} />}
           {open === "flawless" && <FirstScreen kind="first-flawless-test" onContinue={close} />}
         </div>

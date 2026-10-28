@@ -177,6 +177,11 @@ function release(slot: Slot) {
 
 /** A 3D folded-paper topic object drawn with the print shader, rendered offscreen and copied into a canvas inside its box. */
 /** Still (one fixed print) until hovered; `active` keeps it spinning and boiling, for the one hero object on a page. */
+/** First league trophy model (bell, medal, cup, crown); mirrors LEAGUE_MODEL in print-objects.ts, which pulls in three. */
+export const LEAGUE_MODEL = 9
+/** Broken heart (out of hearts); mirrors HEART_MODEL in print-objects.ts. */
+export const HEART_MODEL = 13
+
 export function PrintObject({
   model,
   hovered = false,
@@ -194,7 +199,8 @@ export function PrintObject({
   const ref = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const slotRef = useRef<Slot | null>(null)
-  const MODEL_COUNT = 9
+  // Kept in sync with print-objects.ts by hand, so three stays out of this file: 9 course objects, 4 league objects, 1 heart.
+  const MODEL_COUNT = 14
   const m = ((model % MODEL_COUNT) + MODEL_COUNT) % MODEL_COUNT
 
   useEffect(() => {

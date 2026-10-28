@@ -42,7 +42,7 @@ export function ReviewPanel({
     <section className="w-full space-y-3 text-left">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="eyebrow">Recommended review</p>
+          <p className="text-[14px] font-medium text-white/60">Recommended review</p>
           <p className="text-[14px] text-white/60">A few concepts didn&apos;t stick yet. Here&apos;s where to look.</p>
         </div>
       </div>

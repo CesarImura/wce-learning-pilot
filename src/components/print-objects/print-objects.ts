@@ -40,6 +40,18 @@ const C: Record<string, [number, number, number]> = {
   blue: [0.416, 0.745, 0.949],
   deep: [0.122, 0.31, 0.47],
   black: [0.2, 0.235, 0.26],
+  // League inks: each league prints in its own metal instead of the course blue.
+  bronze: [0.784, 0.455, 0.227],
+  bronzeDeep: [0.33, 0.18, 0.09],
+  silver: [0.78, 0.83, 0.87],
+  silverDeep: [0.17, 0.2, 0.25],
+  gold: [0.96, 0.75, 0.26],
+  goldDeep: [0.42, 0.29, 0.07],
+  obsidian: [0.64, 0.52, 0.98],
+  obsidianDeep: [0.13, 0.1, 0.22],
+  // Hearts (out of hearts): the lesson's heart red.
+  red: [0.89, 0.27, 0.36],
+  redDeep: [0.33, 0.07, 0.11],
 }
 
 const hs = (s: string) => {
@@ -103,6 +115,89 @@ const RING_R = 1.55
 const RING_TILT = (25 * Math.PI) / 180
 // A point on the globe's orbit ring at angle a, ring tilted by t about Z.
 const ringPoint = (a: number, t: number) => [RING_R * Math.cos(a) * Math.cos(t), RING_R * Math.cos(a) * Math.sin(t), RING_R * Math.sin(a)]
+
+// League objects stand on a trophy plinth, unlike the course objects that float: the plinth and the metal inks set them apart.
+const plinth = (ink: string): Part => [new THREE.CylinderGeometry(0.82, 0.92, 0.3, 6).translate(0, -1.04, 0), ["black", ink + "Deep", ink], "plinth"]
+
+/** First league model index; 9 bronze bell, 10 silver medal, 11 gold cup, 12 obsidian crown. */
+export const LEAGUE_MODEL = 9
+
+const LEAGUE_MODELS: (() => ModelDef)[] = [
+  () => {
+    // Exchange opening bell: lathe body, handle and knob.
+    const pal = ["bronze", "bronzeDeep", "bone", "bronze"]
+    const bell = lathe([[0, -0.86], [0.78, -0.86], [0.72, -0.72], [0.5, -0.32], [0.42, 0.2], [0.28, 0.44], [0, 0.48]], 8)
+    const handle = new THREE.CylinderGeometry(0.09, 0.13, 0.55, 6).translate(0, 0.74, 0)
+    const knob = new THREE.IcosahedronGeometry(0.17, 0).translate(0, 1.1, 0)
+    return { parts: [plinth("bronze"), [bell, pal, "bell"], [handle, ["black", "bone"], "h"], [knob, ["bronze", "black"], "k"]], rz: 0 }
+  },
+  () => {
+    // Medal on a post: a ten-sided disc, a raised centre and a two-strap ribbon.
+    const disc = new THREE.CylinderGeometry(0.76, 0.76, 0.2, 10).rotateX(Math.PI / 2).translate(0, 0.12, 0)
+    const boss = new THREE.CylinderGeometry(0.4, 0.4, 0.24, 5).rotateX(Math.PI / 2).translate(0, 0.12, 0)
+    const post = new THREE.BoxGeometry(0.14, 0.4, 0.14).translate(0, -0.74, 0)
+    const strap = (x: number, a: number) => new THREE.BoxGeometry(0.26, 0.7, 0.04).rotateZ(a).translate(x, 1.02, -0.04)
+    return {
+      parts: [
+        plinth("silver"),
+        [post, ["black"], "post"],
+        [strap(-0.2, 0.32), ["silverDeep", "bone"], "s1"],
+        [strap(0.2, -0.32), ["bone", "silverDeep"], "s2"],
+        [disc, ["silver", "bone", "silver"], "disc"],
+        [boss, ["silverDeep", "bone", "silver"], "boss"],
+      ],
+      rz: 0,
+    }
+  },
+  () => {
+    // Trophy cup: foot, stem, bowl and two handles.
+    const cup = lathe([[0, -0.86], [0.42, -0.86], [0.42, -0.74], [0.12, -0.62], [0.1, -0.22], [0.5, 0.02], [0.68, 0.78], [0.56, 0.78], [0, 0.36]], 8)
+    const handle = (x: number, a: number) => new THREE.TorusGeometry(0.26, 0.06, 3, 8, Math.PI).rotateZ(a).translate(x, 0.42, 0)
+    return {
+      parts: [
+        plinth("gold"),
+        [cup, ["gold", "goldDeep", "bone", "gold"], "cup"],
+        [handle(-0.62, Math.PI / 2), ["gold", "black"], "hl"],
+        [handle(0.62, -Math.PI / 2), ["goldDeep", "bone"], "hr"],
+      ],
+      rz: 0,
+    }
+  },
+  () => {
+    // Crown: an eight-sided band, five spikes and a gem on the front.
+    const band = new THREE.CylinderGeometry(0.72, 0.66, 0.42, 8).translate(0, -0.66, 0)
+    const spikes: Part[] = Array.from({ length: 5 }, (_, k) => {
+      const a = (k / 5) * Math.PI * 2 + Math.PI / 2
+      const g = new THREE.ConeGeometry(0.2, 0.62, 4).translate(0.66 * Math.cos(a), -0.14, 0.66 * Math.sin(a))
+      return [g, k % 2 ? ["obsidian", "obsidianDeep"] : ["obsidianDeep", "bone"], "sp" + k]
+    })
+    const gem = new THREE.OctahedronGeometry(0.17, 0).translate(0, -0.64, 0.74)
+    return {
+      parts: [plinth("obsidian"), [band, ["obsidianDeep", "obsidian", "black", "bone"], "band"], ...spikes, [gem, ["bone", "obsidian"], "gem"]],
+      rz: 0,
+    }
+  },
+]
+
+/** Broken heart for the out-of-hearts screen: two extruded halves split along a zigzag crack. */
+export const HEART_MODEL = LEAGUE_MODEL + LEAGUE_MODELS.length
+
+// The classic parametric heart (x = 16 sin^3 t, ...), t from 0 (top dip) through pi (bottom tip).
+const heartPt = (t: number) => [16 * Math.sin(t) ** 3, 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)]
+const CRACK = [[0, 5], [-1.6, 0], [1.4, -5], [-1.2, -10.5], [0, -17]]
+
+function heartHalf(side: 1 | -1) {
+  const pts: number[][] = []
+  const n = 9 // few segments on purpose: faceted like the other print objects
+  for (let k = 0; k <= n; k++) pts.push(heartPt(side === 1 ? (k / n) * Math.PI : Math.PI + (k / n) * Math.PI))
+  // Right half runs top -> bottom along its edge, then climbs the crack; the left half runs bottom -> top and comes down it.
+  const crack = side === 1 ? [...CRACK].reverse().slice(1, -1) : CRACK.slice(1, -1)
+  const shape = new THREE.Shape([...pts, ...crack].map(([x, y]) => new THREE.Vector2(x, y + 2.5)))
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 5, bevelEnabled: false, curveSegments: 1 })
+  g.translate(side * 0.9, 0, -2.5)
+  g.scale(1 / 14.5, 1 / 14.5, 1 / 14.5)
+  return g
+}
 
 const MODELS: (() => ModelDef)[] = [
   () => {
@@ -205,13 +300,21 @@ const MODELS: (() => ModelDef)[] = [
       rz: 0,
     }
   },
+  ...LEAGUE_MODELS,
+  () => ({
+    parts: [
+      [heartHalf(-1), ["red", "redDeep", "bone"], "hl"],
+      [heartHalf(1), ["redDeep", "red", "black"], "hr"],
+    ],
+    rz: 0,
+  }),
 ]
 
 export const MODEL_COUNT = MODELS.length
 
 // Objects stand still until hovered, so each starts at a 3/4 angle that shows its shape (the columns side by side,
 // both sides of the order book). Index = model.
-const REST_YAW: (number | undefined)[] = [0.4, 0.5, 0.3, 0.6, 0.5, 0.6, -0.45, 0.35, 0.5]
+const REST_YAW: (number | undefined)[] = [0.4, 0.5, 0.3, 0.6, 0.5, 0.6, -0.45, 0.35, 0.5, 0.5, 0.57, 0.55, 0.4, 0.5]
 
 type Uniforms = {
   uTex: { value: number }
@@ -326,6 +429,11 @@ export function createItem(i: number, eng: Engine): PrintItem {
     grp.position.y = -0.17
   }
   if (i === 8) grp.scale.setScalar(0.72)
+  if (i === HEART_MODEL) grp.scale.setScalar(1.3)
+  if (i >= LEAGUE_MODEL && i < HEART_MODEL) {
+    grp.scale.setScalar(0.88)
+    grp.position.y = 0.1
+  }
   const sc = new THREE.Scene()
   sc.add(grp)
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50)
@@ -425,6 +533,57 @@ const ANIM: ((it: PrintItem, th: number) => void)[] = [
     const a = th * 3, p = ringPoint(a, tilt), p0 = ringPoint(0, RING_TILT)
     it.ms[2].position.set(p[0] - p0[0], p[1] - p0[1], p[2] - p0[2])
   },
+  (it, th) => {
+    // Bell rings: a damped swing of body, handle and knob, repeating every 1.6s.
+    const d = th % 1.6
+    const a = 0.32 * Math.sin(d * 14) * Math.exp(-d * 2.4)
+    for (let k = 1; k < 4; k++) {
+      const m = it.ms[k]
+      m.rotation.z = a
+      m.position.x = -a * 0.6
+    }
+  },
+  (it, th) => {
+    // Medal flips a full turn with overshoot, holds, flips again.
+    const d = th % 1.8
+    const r = Math.PI * 2 * ob(Math.min(d / 0.7, 1))
+    for (let k = 2; k < 6; k++) it.ms[k].rotation.y = r
+  },
+  (it, th) => {
+    // Cup hops off the plinth with a squash on landing and a half turn in the air.
+    const ph = (th % 1.1) / 1.1
+    const up = ph < 0.6 ? Math.sin((ph / 0.6) * Math.PI) : 0
+    const sq = ph >= 0.6 && ph < 0.75 ? Math.sin(((ph - 0.6) / 0.15) * Math.PI) : 0
+    for (let k = 1; k < 4; k++) {
+      const m = it.ms[k]
+      m.position.y = 0.42 * up
+      m.rotation.y = ph < 0.6 ? Math.PI * ob(ph / 0.6) : 0
+      m.scale.set(1 + 0.12 * sq, 1 - 0.14 * sq, 1 + 0.12 * sq)
+    }
+  },
+  (it, th) => {
+    // Crown spikes rise one after another, the gem pulses.
+    for (let k = 0; k < 5; k++) {
+      const d = (((th - k * 0.1) % 1.4) + 1.4) % 1.4
+      const l = d < 0.5 ? Math.sin((d / 0.5) * Math.PI) : 0
+      const m = it.ms[2 + k]
+      m.position.y = 0.22 * l
+      m.scale.y = 1 + 0.25 * l
+    }
+    it.ms[7].scale.setScalar(1 + 0.3 * Math.max(0, Math.sin(th * 5)))
+  },
+  (it, th) => {
+    // A beat that breaks: both halves swell, then drift apart along the crack and settle back.
+    const ph = (th % 1.4) / 1.4
+    const beat = ph < 0.15 ? Math.sin((ph / 0.15) * Math.PI) : 0
+    const split = ph >= 0.15 && ph < 0.7 ? Math.sin(((ph - 0.15) / 0.55) * Math.PI) : 0
+    it.ms.forEach((m, k) => {
+      const side = k === 0 ? -1 : 1
+      m.scale.setScalar(1 + 0.08 * beat)
+      m.position.set(side * 0.22 * split, -0.08 * split, 0)
+      m.rotation.z = -side * 0.22 * split
+    })
+  },
 ]
 
 const ONE = new THREE.Vector3(1, 1, 1)
@@ -472,7 +631,8 @@ export function renderItem(
   const cfg = getSettings()
   const step = Math.floor(o.tick / Math.max(1, Math.round(cfg.boilEvery)))
   it.U.uSeed.value = o.still || cfg.boil === "off" ? 1 : cfg.boil === "random" ? step + 1 : (step % 3) + 1
-  it.U.uMap.value = cfg.map
+  // League objects keep their print wrapped on the object (it turns with them); course objects follow the panel.
+  it.U.uMap.value = it.index >= LEAGUE_MODEL ? 1 : cfg.map
   it.U.uTex.value = cfg.tex
   it.U.uJump.value = cfg.jump
   it.U.uRes.value.set(W, H)
