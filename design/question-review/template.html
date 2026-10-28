@@ -1,0 +1,653 @@
+<title>Training Question Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a review desk. Question list on the left, the question as the learner sees it in the middle,
+   the verdict and the conversation pinned on the right. */
+:root {
+  --bg: #f4f5f3;
+  --panel: #ffffff;
+  --sunken: #eceeeb;
+  --line: #dcdfda;
+  --line-strong: #c3c8c1;
+  --fg: #171a17;
+  --fg-2: #4d544c;
+  --fg-3: #7a8279;
+  --accent: #2f6f5e;
+  --accent-soft: #e2efea;
+  --ok: #24855a;
+  --ok-soft: #dff2e7;
+  --change: #a86a12;
+  --change-soft: #fbeed7;
+  --remove: #bf3b3b;
+  --remove-soft: #fbe1e0;
+  --todo: #8a9188;
+  --todo-soft: #eceeeb;
+  --live: #2f5f8f;
+  --live-soft: #e3ecf6;
+  --shadow: 0 1px 2px rgb(20 30 20 / 0.06), 0 8px 24px rgb(20 30 20 / 0.06);
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r-card: 12px;
+  --r-row: 8px;
+  --r-btn: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111412; --panel: #181c19; --sunken: #1f2420; --line: #2a302b; --line-strong: #3a423b;
+    --fg: #e8ece7; --fg-2: #b4bcb3; --fg-3: #858e84; --accent: #7cc4ad; --accent-soft: #1f3530;
+    --ok: #5cc993; --ok-soft: #173324; --change: #e2a84f; --change-soft: #3a2b14; --remove: #ec7c78; --remove-soft: #3b1d1c;
+    --todo: #8a9389; --todo-soft: #232823; --live: #8db8e6; --live-soft: #1c2a3a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111412; --panel: #181c19; --sunken: #1f2420; --line: #2a302b; --line-strong: #3a423b;
+  --fg: #e8ece7; --fg-2: #b4bcb3; --fg-3: #858e84; --accent: #7cc4ad; --accent-soft: #1f3530;
+  --ok: #5cc993; --ok-soft: #173324; --change: #e2a84f; --change-soft: #3a2b14; --remove: #ec7c78; --remove-soft: #3b1d1c;
+  --todo: #8a9389; --todo-soft: #232823; --live: #8db8e6; --live-soft: #1c2a3a;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.app > * { min-width: 0; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased; font-feature-settings: "ss01";
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+.app { display: grid; grid-template-columns: 340px minmax(0, 1fr); height: 100%; }
+
+/* ---------- sidebar ---------- */
+.side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--panel); }
+.side-head { display: flex; flex-direction: column; gap: 12px; padding: 16px max(16px, env(safe-area-inset-left, 0px)) 12px 16px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.brand h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.brand span { color: var(--fg-3); font-size: 12px; }
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--sunken); }
+.bar i { display: block; height: 100%; }
+.counts { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.counts b { font-weight: 600; color: var(--fg); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.search { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--bg); }
+.search::placeholder { color: var(--fg-3); }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 13px; background: transparent; font-size: 12px; color: var(--fg-2); }
+.chip[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--panel); }
+.chip[aria-pressed="true"] .dot { box-shadow: 0 0 0 1.5px var(--panel); }
+.course-select { height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--bg); font-size: 12px; }
+.list { flex: 1; overflow-y: auto; padding: 8px 8px 24px max(8px, env(safe-area-inset-left, 0px)); overscroll-behavior: contain; }
+.group-course { margin: 14px 8px 4px; font-size: 12px; font-weight: 600; color: var(--fg); }
+.group-unit { margin: 10px 8px 2px; font-size: 12px; color: var(--fg-3); }
+.group-lesson { display: flex; justify-content: space-between; gap: 8px; margin: 8px 8px 2px; font-size: 12px; font-weight: 500; color: var(--fg-2); }
+.group-lesson span:last-child { color: var(--fg-3); font-variant-numeric: tabular-nums; font-weight: 400; }
+.q { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: var(--r-row); background: transparent; text-align: left; }
+.q:hover { background: var(--sunken); }
+.q[aria-current="true"] { background: var(--accent-soft); }
+.q .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q .meta { color: var(--fg-3); font-size: 11px; display: flex; gap: 6px; align-items: center; }
+.q .bubble { display: inline-flex; align-items: center; gap: 3px; color: var(--fg-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.empty-list { padding: 24px 12px; color: var(--fg-3); }
+
+/* ---------- main ---------- */
+.main { min-width: 0; overflow-y: auto; }
+.wrap { max-width: 1440px; margin: 0 auto; padding-block: 20px 64px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+.topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--fg-3); font-size: 13px; }
+.crumbs b { color: var(--fg-2); font-weight: 500; }
+.nav { display: flex; gap: 6px; align-items: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--panel); color: var(--fg); font-size: 13px; font-weight: 500; }
+.btn:hover:not(:disabled) { border-color: var(--line-strong); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.primary { background: var(--fg); border-color: var(--fg); color: var(--panel); }
+.kbd { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--fg-3); }
+
+.head { display: flex; flex-direction: column; gap: 8px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--sunken); color: var(--fg-2); font-size: 12px; }
+.tag.id { font-family: var(--mono); }
+.tag.test { background: var(--change-soft); color: var(--change); }
+.head h2 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-card); }
+.shot-card { overflow: hidden; }
+.shot-tabs { display: flex; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); }
+.tab { height: 30px; padding: 0 12px; border: 0; border-radius: var(--r-btn); background: transparent; color: var(--fg-2); font-size: 13px; }
+.tab[aria-selected="true"] { background: var(--sunken); color: var(--fg); font-weight: 500; }
+.tab:disabled { color: var(--fg-3); cursor: default; }
+.shot-tabs .spacer { flex: 1; }
+.shot-tabs .note { color: var(--fg-3); font-size: 12px; padding-right: 6px; }
+.shot { display: block; width: 100%; aspect-ratio: 1440 / 900; background: #0b0d0c; border: 0; padding: 0; cursor: zoom-in; }
+.shot img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.shot-missing { display: grid; place-items: center; aspect-ratio: 1440 / 900; color: var(--fg-3); background: var(--sunken); }
+
+.field { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); }
+.field:first-child { border-top: 0; }
+.field h3 { margin: 0; font-size: 12px; font-weight: 500; color: var(--fg-3); }
+.field .v { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg); font-size: 15px; line-height: 1.55; max-width: 75ch; }
+.field .v.muted { color: var(--fg-3); }
+.field.answer { background: var(--ok-soft); }
+.field.answer h3 { color: var(--ok); }
+.live { display: inline-block; padding: 0 5px; border-radius: 4px; background: var(--live-soft); color: var(--live); font-family: var(--mono); font-size: 0.85em; }
+.links { display: flex; flex-direction: column; gap: 6px; }
+.links a { color: var(--accent); text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+.links small { color: var(--fg-3); }
+.also { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* review panel */
+.review { position: sticky; top: 16px; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+.review-sec { padding: 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); }
+.review-sec:first-child { border-top: 0; }
+.review h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.status-set { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.st { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--panel); font-size: 13px; font-weight: 500; text-align: left; }
+.st .k { margin-left: auto; }
+.st[aria-pressed="true"][data-s="todo"] { background: var(--todo-soft); border-color: var(--todo); }
+.st[aria-pressed="true"][data-s="ok"] { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.st[aria-pressed="true"][data-s="change"] { background: var(--change-soft); border-color: var(--change); color: var(--change); }
+.st[aria-pressed="true"][data-s="remove"] { background: var(--remove-soft); border-color: var(--remove); color: var(--remove); }
+.st:disabled { cursor: default; opacity: 0.6; }
+.set-by { color: var(--fg-3); font-size: 12px; min-height: 18px; }
+.thread { display: flex; flex-direction: column; gap: 12px; }
+.note { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; }
+.note img { width: 24px; height: 24px; border-radius: 50%; }
+.note .who { display: flex; gap: 6px; align-items: baseline; font-size: 12px; }
+.note .who b { font-weight: 600; }
+.note .who span { color: var(--fg-3); }
+.note .txt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+.note .del { border: 0; background: none; padding: 0; color: var(--fg-3); font-size: 12px; margin-left: auto; }
+.note .del:hover { color: var(--remove); }
+.no-notes { color: var(--fg-3); font-size: 13px; }
+textarea { width: 100%; min-height: 84px; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: var(--r-row); background: var(--bg); line-height: 1.5; }
+.compose-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.compose-row small { color: var(--fg-3); font-size: 12px; }
+.banner { padding: 10px 12px; border-radius: var(--r-row); background: var(--change-soft); color: var(--change); font-size: 12px; }
+.banner[data-tone="ok"] { background: var(--accent-soft); color: var(--accent); }
+.err { color: var(--remove); font-size: 12px; }
+
+/* lightbox */
+.lightbox { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); background: rgb(0 0 0 / 0.82); cursor: zoom-out; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+/* phones and narrow windows */
+.list-toggle { display: none; }
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .review { position: static; }
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); }
+  .side .list { max-height: 50vh; }
+  .side[data-collapsed="true"] .list, .side[data-collapsed="true"] .filters, .side[data-collapsed="true"] .search, .side[data-collapsed="true"] .course-select { display: none; }
+  .list-toggle { display: inline-flex; }
+  .main { overflow: visible; }
+  .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .head h2 { font-size: 22px; }
+  .hide-narrow { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="side" id="side" data-collapsed="false">
+    <div class="side-head">
+      <div class="brand">
+        <h1>Training Question Review</h1>
+        <button class="btn list-toggle" id="listToggle" type="button" aria-controls="list">Hide list</button>
+      </div>
+      <div class="progress">
+        <div class="bar" id="bar" aria-hidden="true"></div>
+        <div class="counts" id="counts"></div>
+      </div>
+      <input class="search" id="search" type="search" placeholder="Search prompt, answer, explanation" aria-label="Search questions">
+      <div class="filters" id="filters" role="group" aria-label="Filter by status"></div>
+      <select class="course-select" id="course" aria-label="Course"></select>
+    </div>
+    <nav class="list" id="list" aria-label="Questions"></nav>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="wrap" id="detail"></div>
+  </main>
+</div>
+<div class="lightbox" id="lightbox" hidden><img id="lightboxImg" alt=""></div>
+
+<script type="application/json" id="rows">__ROWS__</script>
+<script type="application/json" id="shots">__SHOTS__</script>
+<script>
+(() => {
+  const ROWS = JSON.parse(document.getElementById("rows").textContent);
+  const SHOTS = JSON.parse(document.getElementById("shots").textContent);
+  const BY_ID = Object.fromEntries(ROWS.map((r) => [r.id, r]));
+  const STATUSES = [
+    { s: "todo", label: "To review", color: "var(--todo)", key: "1" },
+    { s: "ok", label: "OK", color: "var(--ok)", key: "2" },
+    { s: "change", label: "Change", color: "var(--change)", key: "3" },
+    { s: "remove", label: "Remove", color: "var(--remove)", key: "4" },
+  ];
+  const S = Object.fromEntries(STATUSES.map((x) => [x.s, x]));
+
+  // ---- state
+  const state = {
+    current: null,
+    filter: "all",
+    course: "all",
+    query: "",
+    tab: "q",
+    reviews: {},   // qid -> {status, by, at}
+    notes: [],     // {id, q, by, at, text}
+    me: null,      // user id
+    profiles: {},
+    mode: "connecting", // connecting | shared | local | readonly
+  };
+  let db = null, user = null;
+
+  // ---- per-viewer conveniences
+  const LS = "wce-review-ui";
+  const LOCAL = "wce-review-local";
+  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} };
+  const ui = load(LS, {});
+  if (ui.filter) state.filter = ui.filter;
+  if (ui.course) state.course = ui.course;
+
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c)));
+    return n;
+  };
+  const statusOf = (id) => state.reviews[id]?.status || "todo";
+  const notesOf = (id) => state.notes.filter((n) => n.q === id).sort((a, b) => a.at - b.at);
+  const ago = (t) => {
+    const s = Math.round((Date.now() - t) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+    const d = new Date(t);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  };
+  // [brackets] in feedback are filled in live from what the learner did
+  const rich = (text) => {
+    const frag = document.createDocumentFragment();
+    String(text).split(/(\[[^\]]{1,40}\])/g).forEach((part) => {
+      if (/^\[[^\]]+\]$/.test(part)) frag.append(el("span", { class: "live", title: "Filled in live from what the learner did", text: part.slice(1, -1) }));
+      else if (part) frag.append(part);
+    });
+    return frag;
+  };
+
+  // ---- filtering
+  function visibleRows() {
+    const q = state.query.trim().toLowerCase();
+    return ROWS.filter((r) => {
+      if (state.course !== "all" && r.courseId !== state.course) return false;
+      if (state.filter === "notes") { if (!notesOf(r.id).length) return false; }
+      else if (state.filter !== "all" && statusOf(r.id) !== state.filter) return false;
+      if (q) {
+        const hay = [r.id, r.prompt, r.question, r.answer, r.explanation, r.wrong, r.hint, r.lesson, r.type].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  // ---- sidebar
+  function renderProgress() {
+    const counts = Object.fromEntries(STATUSES.map((x) => [x.s, 0]));
+    ROWS.forEach((r) => counts[statusOf(r.id)]++);
+    const bar = document.getElementById("bar");
+    bar.replaceChildren(...["ok", "change", "remove"].map((s) => el("i", { style: `width:${(counts[s] / ROWS.length) * 100}%;background:${S[s].color}` })));
+    const reviewed = ROWS.length - counts.todo;
+    document.getElementById("counts").replaceChildren(
+      el("span", {}, el("b", { text: `${reviewed} of ${ROWS.length}` }), " reviewed"),
+      ...["ok", "change", "remove"].map((s) => el("span", {}, el("b", { text: counts[s] }), ` ${S[s].label.toLowerCase()}`)),
+    );
+  }
+  function renderFilters() {
+    const opts = [{ s: "all", label: "All" }, ...STATUSES, { s: "notes", label: "With comments" }];
+    document.getElementById("filters").replaceChildren(
+      ...opts.map((o) =>
+        el("button", { class: "chip", type: "button", "aria-pressed": String(state.filter === o.s), onclick: () => { state.filter = o.s; save(LS, { ...ui, filter: o.s, course: state.course }); renderFilters(); renderList(); } },
+          o.color ? el("span", { class: "dot", style: `background:${o.color}` }) : null, o.label),
+      ),
+    );
+    const sel = document.getElementById("course");
+    if (!sel.options.length) {
+      sel.append(el("option", { value: "all", text: "All courses" }));
+      [...new Map(ROWS.map((r) => [r.courseId, r.course])).entries()].forEach(([id, name]) => sel.append(el("option", { value: id, text: name })));
+      sel.value = state.course;
+      sel.addEventListener("change", () => { state.course = sel.value; save(LS, { ...ui, filter: state.filter, course: state.course }); renderList(); });
+    }
+  }
+  function renderList() {
+    const rows = visibleRows();
+    const list = document.getElementById("list");
+    if (!rows.length) { list.replaceChildren(el("p", { class: "empty-list", text: "No questions match. Clear the search or pick another filter." })); return; }
+    const out = [];
+    let course, unit, lesson;
+    for (const r of rows) {
+      if (r.course !== course) { course = r.course; unit = lesson = null; out.push(el("div", { class: "group-course", text: r.course })); }
+      if (r.unit !== unit) { unit = r.unit; lesson = null; out.push(el("div", { class: "group-unit", text: r.unit })); }
+      if (r.lesson !== lesson) {
+        lesson = r.lesson;
+        const inLesson = ROWS.filter((x) => x.course === r.course && x.lesson === r.lesson);
+        const done = inLesson.filter((x) => statusOf(x.id) !== "todo").length;
+        out.push(el("div", { class: "group-lesson" }, el("span", { text: r.lesson }), el("span", { text: `${done}/${inLesson.length}` })));
+      }
+      const n = notesOf(r.id).length;
+      out.push(
+        el("button", { class: "q", type: "button", "aria-current": String(state.current === r.id), "data-id": r.id, onclick: () => go(r.id) },
+          el("span", { class: "dot", style: `background:${S[statusOf(r.id)].color}`, title: S[statusOf(r.id)].label }),
+          el("span", { class: "t" },
+            el("span", { text: r.prompt }),
+            el("div", { class: "meta" }, el("span", { class: "mono", text: r.id }), el("span", { text: `· ${r.type}` })),
+          ),
+          n ? el("span", { class: "bubble", title: `${n} comment${n > 1 ? "s" : ""}` }, svgBubble(), String(n)) : el("span"),
+        ),
+      );
+    }
+    list.replaceChildren(...out);
+    list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
+  }
+  function svgBubble() {
+    const ns = "http://www.w3.org/2000/svg";
+    const s = document.createElementNS(ns, "svg");
+    s.setAttribute("width", "12"); s.setAttribute("height", "12"); s.setAttribute("viewBox", "0 0 16 16"); s.setAttribute("aria-hidden", "true");
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", "M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v6A1.5 1.5 0 0 1 12.5 11H7l-3 3v-3h-.5A1.5 1.5 0 0 1 2 9.5z");
+    p.setAttribute("fill", "none"); p.setAttribute("stroke", "currentColor"); p.setAttribute("stroke-width", "1.4");
+    s.append(p);
+    return s;
+  }
+
+  // ---- detail
+  function field(title, value, cls = "") {
+    const empty = !value || (Array.isArray(value) && !value.length);
+    return el("section", { class: `field ${cls}` },
+      el("h3", { text: title }),
+      empty ? el("div", { class: "v muted", text: "None" }) : value.nodeType ? value : el("div", { class: "v" }, rich(value)),
+    );
+  }
+  let renderSeq = 0;
+  async function renderDetail() {
+    const seq = ++renderSeq;
+    const r = BY_ID[state.current];
+    const box = document.getElementById("detail");
+    if (!r) { box.replaceChildren(); return; }
+    const rows = visibleRows();
+    const idx = rows.findIndex((x) => x.id === r.id);
+    const prev = idx > 0 ? rows[idx - 1] : null;
+    const next = idx >= 0 && idx < rows.length - 1 ? rows[idx + 1] : null;
+    const shots = SHOTS[r.id] || {};
+    if (state.tab === "a" && !shots.a) state.tab = "q";
+
+    // screenshot
+    const src = state.tab === "a" ? shots.a : shots.q;
+    const shotNote = r.learn ? "Concept screen: nothing to answer" : !shots.a ? "This exercise can't be answered automatically in the prototype" : "";
+    const shotCard = el("div", { class: "card shot-card" },
+      el("div", { class: "shot-tabs", role: "tablist", "aria-label": "Screenshot" },
+        el("button", { class: "tab", role: "tab", type: "button", "aria-selected": String(state.tab === "q"), onclick: () => { state.tab = "q"; renderDetail(); } }, "As the learner sees it"),
+        el("button", { class: "tab", role: "tab", type: "button", "aria-selected": String(state.tab === "a"), disabled: !shots.a, onclick: () => { state.tab = "a"; renderDetail(); } }, "After a right answer"),
+        el("span", { class: "spacer" }),
+        shotNote ? el("span", { class: "note hide-narrow", text: shotNote }) : null,
+      ),
+      src
+        ? el("button", { class: "shot", type: "button", "aria-label": "Open screenshot full size", onclick: () => openLightbox(src) }, el("img", { src, alt: `${r.prompt}: ${state.tab === "a" ? "after a right answer" : "as the learner sees it"}`, loading: "eager" }))
+        : el("div", { class: "shot-missing", text: "No screenshot for this step" }),
+    );
+
+    // content
+    const linkList = r.links?.length
+      ? el("div", { class: "links" }, ...r.links.map((l) => el("div", {}, el("a", { href: l.url, target: "_blank", rel: "noopener", text: l.label }), " ", el("small", { text: l.source }))))
+      : null;
+    const also = r.also?.length ? el("div", { class: "also" }, ...r.also.map((a) => el("span", { class: "tag", text: a }))) : null;
+    const content = el("div", { class: "card" },
+      field(r.learn ? "Content" : "Question", r.question),
+      r.learn ? null : field("Correct answer", r.answer, "answer"),
+      r.learn ? null : field("Explanation after a right answer", r.explanation),
+      r.learn ? null : field("Wrong-answer feedback", r.wrong),
+      r.learn ? null : field("Need a hint?", r.hint),
+      field("Further reading", linkList),
+      field("Also used in", also),
+    );
+
+    const panel = await reviewPanel(r);
+    if (seq !== renderSeq) return; // a newer render has started
+    // keep the reviewer's place in the comment box when someone else's change re-renders the page
+    const active = document.activeElement?.id === "comment" ? document.activeElement : null;
+    const sel = active ? [active.selectionStart, active.selectionEnd] : null;
+    box.replaceChildren(
+      el("div", { class: "topline" },
+        el("div", { class: "crumbs" }, el("b", { text: r.course }), el("span", { "aria-hidden": "true", text: "›" }), el("span", { text: r.unit }), el("span", { "aria-hidden": "true", text: "›" }), el("b", { text: r.lesson }), el("span", { "aria-hidden": "true", text: "›" }), el("span", { text: `Step ${r.step}` })),
+        el("div", { class: "nav" },
+          el("span", { class: "kbd hide-narrow", text: "J / K" }),
+          el("button", { class: "btn", type: "button", disabled: !prev, onclick: () => prev && go(prev.id), "aria-label": "Previous question" }, "Previous"),
+          el("button", { class: "btn", type: "button", disabled: !next, onclick: () => next && go(next.id), "aria-label": "Next question" }, "Next"),
+        ),
+      ),
+      el("div", { class: "head" },
+        el("div", { class: "tags" },
+          el("span", { class: "tag id", text: r.id }),
+          el("span", { class: "tag", text: r.type }),
+          r.isTest ? el("span", { class: "tag test", text: "Unit test" }) : null,
+          idx >= 0 ? el("span", { class: "tag", text: `${idx + 1} of ${rows.length} in this view` }) : null,
+        ),
+        el("h2", { text: r.prompt }),
+      ),
+      el("div", { class: "grid" },
+        el("div", { class: "col" }, shotCard, content),
+        panel,
+      ),
+    );
+    if (sel) { const ta = document.getElementById("comment"); ta.focus(); ta.setSelectionRange(sel[0], sel[1]); }
+  }
+
+  async function reviewPanel(r) {
+    const rev = state.reviews[r.id];
+    const notes = notesOf(r.id);
+    const ids = [...new Set([...notes.map((n) => n.by), rev?.by].filter(Boolean))];
+    if (user && ids.length) { try { state.profiles = { ...state.profiles, ...(await user.profiles(ids)) } } catch {} }
+    const nameOf = (id) => (id && state.profiles[id]?.name) || (id && id === state.me ? "You" : "Someone");
+    const avatarOf = (id) => state.profiles[id]?.avatarUrl || "";
+    const readonly = state.mode === "readonly";
+
+    const statusSet = el("div", { class: "status-set", role: "group", "aria-label": "Status" },
+      ...STATUSES.map((x) =>
+        el("button", { class: "st", type: "button", "data-s": x.s, "aria-pressed": String(statusOf(r.id) === x.s), disabled: readonly, onclick: () => setStatus(r.id, x.s) },
+          el("span", { class: "dot", style: `background:${x.color}` }), x.label, el("span", { class: "kbd k hide-narrow", text: x.key })),
+      ),
+    );
+    const setBy = el("div", { class: "set-by", text: rev?.at ? `Set by ${nameOf(rev.by)} · ${ago(rev.at)}` : "" });
+
+    const thread = el("div", { class: "thread" },
+      notes.length
+        ? notes.map((n) =>
+            el("div", { class: "note" },
+              avatarOf(n.by) ? el("img", { src: avatarOf(n.by), alt: "" }) : el("span", { class: "dot", style: "width:24px;height:24px;background:var(--sunken)" }),
+              el("div", {},
+                el("div", { class: "who" }, el("b", { text: nameOf(n.by) }), el("span", { text: ago(n.at) }),
+                  n.by && n.by === state.me && !readonly ? el("button", { class: "del", type: "button", onclick: () => deleteNote(n), text: "Delete" }) : null),
+                el("div", { class: "txt", text: n.text }),
+              ),
+            ))
+        : el("p", { class: "no-notes", text: "No comments yet. Say what to change and why, or suggest the new text." }),
+    );
+    const ta = el("textarea", { id: "comment", placeholder: "Write a comment for this question", "aria-label": "Comment", disabled: readonly });
+    const draftKey = `draft-${r.id}`;
+    ta.value = load(LS + "-drafts", {})[draftKey] || "";
+    ta.addEventListener("input", () => { const d = load(LS + "-drafts", {}); d[draftKey] = ta.value; save(LS + "-drafts", d); });
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNote(r.id, ta); } });
+    const err = el("div", { class: "err", id: "err", role: "status" });
+
+    const banner =
+      state.mode === "local" ? el("div", { class: "banner", text: "Not connected to the shared review. What you set here stays in this browser only." })
+      : state.mode === "readonly" ? el("div", { class: "banner", text: "You can read this review but not change it. Ask the owner for Editor or Contributor access." })
+      : state.mode === "connecting" ? el("div", { class: "banner", "data-tone": "ok", text: "Connecting to the shared review…" })
+      : null;
+
+    return el("aside", { class: "card review", "aria-label": "Review" },
+      el("div", { class: "review-sec" }, el("h3", { text: "Status" }), statusSet, setBy, banner),
+      el("div", { class: "review-sec" },
+        el("h3", { text: notes.length ? `Comments (${notes.length})` : "Comments" }),
+        thread,
+        ta,
+        el("div", { class: "compose-row" },
+          el("small", { class: "hide-narrow", text: "⌘ Enter to post" }),
+          el("button", { class: "btn primary", type: "button", disabled: readonly, onclick: () => addNote(r.id, ta) }, "Post comment"),
+        ),
+        err,
+      ),
+    );
+  }
+
+  // ---- writes
+  const showErr = (msg) => { const e = document.getElementById("err"); if (e) e.textContent = msg; };
+  async function setStatus(id, s) {
+    if (state.mode === "readonly") return;
+    const prev = state.reviews[id];
+    const body = { status: s, by: state.me, at: Date.now() };
+    state.reviews = { ...state.reviews, [id]: body };
+    renderAll();
+    if (state.mode === "shared") {
+      try { await db.doc(`reviews/${id}`).set(body) }
+      catch (e) {
+        state.reviews = { ...state.reviews, [id]: prev };
+        if (e?.code === "invalid_argument") state.mode = "readonly";
+        renderAll();
+        showErr(e?.code === "quota_exceeded" ? "The review store is full. Ask the owner to clear old comments." : "Couldn't save the status. Check your connection and try again.");
+      }
+    } else saveLocal();
+  }
+  async function addNote(q, ta) {
+    const text = ta.value.trim();
+    if (!text || state.mode === "readonly") return;
+    const note = { q, by: state.me, at: Date.now(), text };
+    ta.value = "";
+    const d = load(LS + "-drafts", {}); delete d[`draft-${q}`]; save(LS + "-drafts", d);
+    if (state.mode === "shared") {
+      try { await db.collection("notes").add(note) }
+      catch (e) {
+        ta.value = text;
+        if (e?.code === "invalid_argument") { state.mode = "readonly"; renderDetail(); }
+        showErr(e?.code === "quota_exceeded" ? "The review store is full. Ask the owner to clear old comments." : "Couldn't post the comment. Your text is still in the box; try again.");
+      }
+    } else {
+      state.notes = [...state.notes, { ...note, id: String(Date.now()) }];
+      saveLocal();
+      renderAll();
+    }
+  }
+  async function deleteNote(n) {
+    if (state.mode === "shared") {
+      try { await db.doc(`notes/${n.id}`).delete() } catch { showErr("Couldn't delete the comment. Try again.") }
+    } else {
+      state.notes = state.notes.filter((x) => x !== n);
+      saveLocal();
+      renderAll();
+    }
+  }
+  function saveLocal() { save(LOCAL, { reviews: state.reviews, notes: state.notes }) }
+
+  // ---- navigation
+  function go(id, push = true) {
+    if (!BY_ID[id]) return;
+    state.current = id;
+    state.tab = "q";
+    if (push) { try { history.replaceState(null, "", "#" + id) } catch {} }
+    renderList();
+    renderDetail();
+    document.getElementById("main").scrollTo({ top: 0 });
+    if (matchMedia("(max-width: 860px)").matches) document.getElementById("main").scrollIntoView({ block: "start" });
+  }
+  function step(dir) {
+    const rows = visibleRows();
+    const i = rows.findIndex((r) => r.id === state.current);
+    const n = rows[i + dir] || (i < 0 ? rows[0] : null);
+    if (n) go(n.id);
+  }
+  function openLightbox(src) {
+    const lb = document.getElementById("lightbox");
+    document.getElementById("lightboxImg").src = src;
+    lb.hidden = false;
+  }
+  document.getElementById("lightbox").addEventListener("click", () => { document.getElementById("lightbox").hidden = true; });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") document.getElementById("lightbox").hidden = true;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); step(1); }
+    else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+    else if (e.key === "/") { e.preventDefault(); document.getElementById("search").focus(); }
+    else if (e.key === "c") { e.preventDefault(); document.getElementById("comment")?.focus(); }
+    else { const s = STATUSES.find((x) => x.key === e.key); if (s && state.current) setStatus(state.current, s.s); }
+  });
+  let searchTimer;
+  document.getElementById("search").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { state.query = e.target.value; renderList(); }, 120);
+  });
+  document.getElementById("listToggle").addEventListener("click", () => {
+    const side = document.getElementById("side");
+    const c = side.dataset.collapsed !== "true";
+    side.dataset.collapsed = String(c);
+    document.getElementById("listToggle").textContent = c ? "Show list" : "Hide list";
+  });
+
+  function renderAll() { renderProgress(); renderFilters(); renderList(); renderDetail(); }
+
+  // ---- boot: render from nothing, then light up the shared store
+  const hash = decodeURIComponent(location.hash.slice(1));
+  state.current = BY_ID[hash] ? hash : ROWS[0].id;
+  renderAll();
+
+  async function connect() {
+    const c = window.claude;
+    if (!c?.use) return goLocal();
+    try {
+      [db, user] = await Promise.all([c.use("db"), c.use("user")]);
+    } catch { db = null }
+    if (!db) return goLocal();
+    try { state.me = user ? await user.id() : null } catch {}
+    const canWrite = user ? await user.can("data.write").catch(() => null) : null;
+    state.mode = canWrite === false ? "readonly" : "shared";
+    db.collection("reviews").onSnapshot(
+      (snap) => { const next = {}; snap.docs.forEach((d) => { next[d.id] = d.data() }); state.reviews = next; renderProgress(); renderList(); renderDetail(); },
+      () => goLocal(),
+    );
+    db.collection("notes").onSnapshot(
+      (snap) => { state.notes = snap.docs.map((d) => ({ id: d.id, ...d.data() })); renderList(); renderDetail(); },
+      () => {},
+    );
+    renderDetail();
+  }
+  function goLocal() {
+    const l = load(LOCAL, {});
+    state.reviews = l.reviews || {};
+    state.notes = l.notes || [];
+    state.mode = "local";
+    renderAll();
+  }
+  connect();
+})();
+</script>

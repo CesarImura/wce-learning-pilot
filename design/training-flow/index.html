@@ -1,0 +1,537 @@
+<meta charset="utf-8">
+<title>Training Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a pannable whiteboard of real prototype screens and decisions, with a path picker floating on the left. */
+:root {
+  --canvas: #eceeea;
+  --dot: #c9cdc6;
+  --card: #ffffff;
+  --ink: #1b1e1c;
+  --muted: #646a65;
+  --line: #a9afa9;
+  --edge-label: #eceeea;
+  --accent: #2c56d6;
+  --accent-soft: #e3e9fb;
+  --gold: #9a7612;
+  --gold-soft: #f6eccd;
+  --panel: rgba(255, 255, 255, 0.94);
+  --shadow: 0 1px 2px rgba(20, 24, 20, 0.08), 0 8px 24px rgba(20, 24, 20, 0.08);
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #131513; --dot: #2a2e2a; --card: #1c1f1c; --ink: #eceeea; --muted: #9aa09a; --line: #4d544d;
+    --edge-label: #131513; --accent: #7d9bff; --accent-soft: #1d2643; --gold: #e2c25c; --gold-soft: #2f2914;
+    --panel: rgba(28, 31, 28, 0.94); --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #131513; --dot: #2a2e2a; --card: #1c1f1c; --ink: #eceeea; --muted: #9aa09a; --line: #4d544d;
+  --edge-label: #131513; --accent: #7d9bff; --accent-soft: #1d2643; --gold: #e2c25c; --gold-soft: #2f2914;
+  --panel: rgba(28, 31, 28, 0.94); --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35); color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--canvas); color: var(--ink); font-family: var(--sans); font-size: 14px; overflow: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#viewport { position: fixed; inset: 0; overflow: hidden; cursor: grab; touch-action: none;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 24px 24px; }
+#viewport.dragging, #summary.dragging { cursor: grabbing; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+
+.node { position: absolute; transition: opacity 0.2s ease; }
+.dim .node:not(.on) { opacity: 0.22; }
+.screen { width: 300px; display: flex; flex-direction: column; gap: 8px; }
+.screen h3 { margin: 0; font-size: 15px; font-weight: 600; line-height: 20px; text-wrap: balance; }
+.screen .sub { margin: -6px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+.shot { display: block; padding: 0; border: 0; border-radius: 10px; overflow: hidden; cursor: zoom-in; background: #000;
+  box-shadow: var(--shadow); aspect-ratio: 16 / 10; }
+.shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.on .shot { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-family: var(--mono); font-size: 11px; line-height: 16px; padding: 2px 6px; border-radius: 4px; background: var(--card); color: var(--muted); box-shadow: inset 0 0 0 1px var(--dot); }
+
+.decision { width: 210px; padding: 12px 14px; border-radius: 10px; background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line);
+  font-size: 13px; line-height: 18px; }
+.decision b { display: block; font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.decision span { color: var(--muted); }
+.decision::before { content: "?"; position: absolute; top: -9px; left: 12px; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--ink); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center; }
+.note { width: 210px; padding: 10px 12px; border-radius: 10px; background: var(--gold-soft); color: var(--ink); font-size: 13px; line-height: 18px; }
+.note b { font-weight: 600; }
+.pill { padding: 10px 16px; border-radius: 999px; background: var(--ink); color: var(--canvas); font-weight: 500; white-space: nowrap; }
+.end { padding: 10px 14px; border-radius: 10px; width: 210px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; line-height: 18px; color: var(--muted); }
+.end b { color: var(--ink); font-weight: 600; display: block; }
+.on.decision, .on.end { box-shadow: var(--shadow), inset 0 0 0 2px var(--accent); }
+.on.pill { background: var(--accent); color: #fff; }
+.on.note { box-shadow: inset 0 0 0 2px var(--gold); }
+
+.lane { position: absolute; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.lane::after { content: ""; display: block; width: 100%; height: 1px; margin-top: 8px; background: var(--dot); }
+
+.edge { fill: none; stroke: var(--line); stroke-width: 1.5; transition: opacity 0.2s ease; }
+.edge.dashed { stroke-dasharray: 5 5; }
+.edge-head { fill: var(--line); }
+.dim .edge-g:not(.on) { opacity: 0.18; }
+.edge-g.on .edge { stroke: var(--accent); stroke-width: 2.5; }
+.edge-g.on .edge-head { fill: var(--accent); }
+.edge-label rect { fill: var(--edge-label); }
+.edge-label text { font: 500 12px var(--sans); fill: var(--muted); }
+.edge-g.on .edge-label text { fill: var(--accent); }
+
+/* Floating chrome */
+.panel { position: fixed; z-index: 5; background: var(--panel); backdrop-filter: blur(10px); border-radius: 12px; box-shadow: var(--shadow), inset 0 0 0 1px var(--dot); }
+#side { left: max(16px, env(safe-area-inset-left, 0px)); top: calc(16px + env(safe-area-inset-top, 0px)); width: min(340px, calc(100vw - 32px));
+  max-height: calc(100% - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; }
+#side header { padding: 16px 16px 12px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+#side h1 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; text-wrap: balance; }
+#side header p { margin: 4px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+#toggle { flex: none; border: 0; background: transparent; padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--muted); }
+#toggle:hover { background: var(--accent-soft); color: var(--ink); }
+#side .body { overflow-y: auto; padding: 0 8px 12px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+#side.collapsed .body { display: none; }
+.paths { display: flex; flex-direction: column; gap: 2px; }
+.path-btn { display: flex; flex-direction: column; gap: 2px; text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.path-btn:hover { background: var(--accent-soft); }
+.path-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.path-btn b { font-weight: 600; font-size: 14px; }
+.path-btn span { font-size: 12px; line-height: 16px; opacity: 0.75; }
+.detail { margin: 0 8px; padding: 12px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--dot); display: flex; flex-direction: column; gap: 10px; }
+.detail h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.detail ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 18px; }
+.detail .events { display: flex; flex-wrap: wrap; gap: 4px; }
+.walk { display: flex; align-items: center; gap: 6px; }
+.walk button { border: 0; border-radius: 6px; height: 32px; padding: 0 10px; cursor: pointer; background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+.walk button:hover { background: var(--accent); color: #fff; }
+.walk button:disabled { opacity: 0.4; cursor: default; background: var(--accent-soft); color: var(--ink); }
+.walk output { flex: 1; min-width: 0; font-size: 12px; line-height: 16px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.node.here { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 12px; }
+.detail .why { margin: 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+
+#zoom { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 2px; padding: 4px; }
+#zoom button { border: 0; background: transparent; min-width: 32px; height: 32px; border-radius: 6px; cursor: pointer; padding: 0 8px; }
+#zoom button:hover { background: var(--accent-soft); }
+#zoom output { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+#hint { left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 8px 12px; font-size: 12px; color: var(--muted); }
+@media (max-width: 720px) { #hint { display: none; } }
+
+#lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(8, 10, 8, 0.86); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+#lightbox img { max-width: min(1200px, 100%); max-height: calc(100% - 80px); border-radius: 10px; }
+#lightbox.tall { overflow-y: auto; justify-content: flex-start; }
+#lightbox.tall img { max-height: none; width: min(1200px, 100%); flex: none; }
+#lightbox.tall button { position: fixed; }
+.note a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+#lightbox p { margin: 0; color: #eceeea; font-size: 14px; text-align: center; }
+#lightbox button { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); border: 0; border-radius: 8px; padding: 8px 12px; background: #eceeea; color: #1b1e1c; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .node, .edge { transition: none; } }
+
+/* View switch and the paywall summary: doors → one paywall → two answers, fitted to the screen. */
+.seg { display: flex; gap: 2px; margin: 0 8px; padding: 3px; border-radius: 8px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--dot); }
+.seg button { flex: 1; border: 0; height: 30px; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 500; font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 24, 20, 0.12), inset 0 0 0 1px var(--dot); }
+.sum-side { margin: 0 8px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 18px; }
+.sum-side ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.sum-side p { margin: 0; color: var(--muted); }
+body.summary #viewport, body.summary #paths, body.summary #detail { display: none !important; }
+body:not(.summary) #summary, body:not(.summary) .sum-side { display: none !important; }
+
+#summary { position: fixed; inset: 0; overflow: hidden; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 24px 24px; }
+#stage { position: absolute; left: 0; top: 0; width: 1470px; transform-origin: 0 0; }
+#sum-edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.sum-cols, .sum-heads { display: grid; grid-template-columns: 340px 380px 300px 210px; column-gap: 80px; align-items: center; }
+.sum-heads { margin-bottom: 24px; }
+.sum-head { font-size: 13px; font-weight: 600; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--dot); }
+.sum-col { display: flex; flex-direction: column; }
+.sum-stack { display: flex; flex-direction: column; gap: 16px; }
+.door { display: grid; grid-template-columns: 128px 1fr; gap: 12px; align-items: start; text-align: left; padding: 10px; border: 0; border-radius: 12px;
+  background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--dot); cursor: pointer; transition: box-shadow 0.2s ease; }
+.door:hover { box-shadow: var(--shadow), inset 0 0 0 2px var(--accent); }
+.door img { width: 128px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; display: block; background: #000; }
+.door b { display: block; font-size: 14px; line-height: 18px; font-weight: 600; }
+.door span { display: block; margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--muted); }
+.door .chips { margin-top: 6px; }
+.door .go { margin-top: 6px; font-size: 12px; color: var(--accent); font-weight: 500; }
+.sum-card { display: flex; flex-direction: column; gap: 8px; }
+.sum-card h3 { margin: 0; font-size: 15px; line-height: 20px; font-weight: 600; }
+.sum-card p { margin: -4px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+.sum-card .shot { width: 100%; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tags span { font-size: 12px; line-height: 16px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); }
+.sum-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; max-width: 1000px; }
+.sum-foot .note { width: auto; padding: 12px 14px; }
+.sum-foot ul { margin: 4px 0 0; padding-left: 18px; }
+#summary .end { width: 210px; }
+</style>
+
+<div id="viewport" aria-label="Training flow canvas"><div id="world"><svg id="edges"></svg></div></div>
+
+<aside id="side" class="panel" aria-label="Paths">
+  <header>
+    <div>
+      <h1>Training user flow</h1>
+      <p>The whole Training journey, with the Training Pro fake door test. Every screen is a capture of the prototype. Pick a path, then walk through it.</p>
+    </div>
+    <button id="toggle" aria-expanded="true" aria-controls="side-body">Hide</button>
+  </header>
+  <div class="body" id="side-body">
+    <div class="seg" role="group" aria-label="View"><button data-mode="flow">Full flow</button><button data-mode="summary">Paywall summary</button></div>
+    <div class="sum-side">
+      <ol><li>Group B meets the paywall at 4 moments.</li><li>It is the same paywall every time.</li><li>Both answers keep full access to Training.</li></ol>
+      <p>Click a door to see its full path on the board.</p>
+    </div>
+    <div class="paths" id="paths"></div>
+    <div class="detail" id="detail"></div>
+  </div>
+</aside>
+
+<div id="zoom" class="panel">
+  <button id="zout" aria-label="Zoom out">−</button>
+  <output id="zval">100%</output>
+  <button id="zin" aria-label="Zoom in">+</button>
+  <button id="zfit">Fit</button>
+</div>
+<div id="hint" class="panel">Drag or scroll to move. Pinch or ⌘ + scroll to zoom. Click a screen to enlarge it.</div>
+<section id="summary" aria-label="Paywall summary"><div id="stage"><svg id="sum-edges"></svg></div></section>
+<div id="lightbox" hidden><button id="lbclose">Close</button><img id="lbimg" alt=""><p id="lbcap"></p></div>
+
+<script>
+/*FLOW_DATA*/
+
+// ---------------------------------------------------------------------------
+const world = document.getElementById("world")
+const svg = document.getElementById("edges")
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])
+
+for (const l of LANES) { const d = el("div", "lane", esc(l.text)); d.style.left = l.x + "px"; d.style.top = l.y + "px"; d.style.width = "380px"; world.appendChild(d) }
+for (const [id, n] of Object.entries(N)) {
+  let d
+  if (n.t === "screen") {
+    d = el("div", "node screen")
+    d.innerHTML = `<h3>${esc(n.title)}</h3><p class="sub">${esc(n.sub)}</p>
+      <button class="shot" data-img="${n.img}" aria-label="Enlarge ${esc(n.title)}"><img src="shots/${n.img}.jpg" alt="${esc(n.title)}" loading="lazy" width="300" height="188"></button>
+      ${n.ev?.length ? `<div class="chips">${n.ev.map((e) => `<span class="chip">${esc(e)}</span>`).join("")}</div>` : ""}`
+  } else if (n.t === "decision") d = el("div", "node decision", `<b>${esc(n.q)}</b><span>${esc(n.s)}</span>`)
+  else if (n.t === "note") d = el("div", "node note", n.html)
+  else if (n.t === "end") d = el("div", "node end", n.html)
+  else d = el("div", "node pill", esc(n.text))
+  d.style.left = n.x + "px"; d.style.top = n.y + "px"; d.dataset.id = id
+  world.appendChild(d); n.el = d
+}
+
+// Anchors: a screen's sides meet the middle of its picture.
+function box(id) {
+  const n = N[id], e = n.el
+  const w = e.offsetWidth, h = e.offsetHeight
+  let cy = n.y + h / 2
+  if (n.t === "screen") { const s = e.querySelector(".shot"); cy = n.y + s.offsetTop + s.offsetHeight / 2 }
+  return { l: n.x, r: n.x + w, t: n.y, b: n.y + h, cx: n.x + w / 2, cy }
+}
+function pt(b, side) { return side === "r" ? [b.r, b.cy] : side === "l" ? [b.l, b.cy] : side === "t" ? [b.cx, b.t] : [b.cx, b.b] }
+function route(a, as, b, bs, via) {
+  const p0 = pt(a, as), p1 = pt(b, bs)
+  if (via) return [p0, ...via, ...lastLeg(via.at(-1), p1, bs)]
+  if ((as === "r" || as === "l") && (bs === "l" || bs === "r")) {
+    if (Math.abs(p0[1] - p1[1]) < 2) return [p0, p1]
+    const mx = (p0[0] + p1[0]) / 2
+    return [p0, [mx, p0[1]], [mx, p1[1]], p1]
+  }
+  if ((as === "b" || as === "t") && (bs === "t" || bs === "b")) {
+    if (Math.abs(p0[0] - p1[0]) < 2) return [p0, p1]
+    const my = (p0[1] + p1[1]) / 2
+    return [p0, [p0[0], my], [p1[0], my], p1]
+  }
+  if (as === "b" || as === "t") return [p0, [p0[0], p1[1]], p1]
+  return [p0, [p1[0], p0[1]], p1]
+}
+function lastLeg(v, p1, bs) {
+  if (bs === "l" || bs === "r") return v[1] === p1[1] ? [p1] : [[v[0], p1[1]], p1]
+  return v[0] === p1[0] ? [p1] : [[p1[0], v[1]], p1]
+}
+function clean(pts) { // drop repeated and collinear points
+  const out = []
+  for (const p of pts) {
+    const q = out.at(-1)
+    if (q && Math.abs(q[0] - p[0]) < 0.5 && Math.abs(q[1] - p[1]) < 0.5) continue
+    out.push(p)
+    if (out.length >= 3) {
+      const [a, b, c] = out.slice(-3)
+      if ((Math.abs(a[0] - b[0]) < 0.5 && Math.abs(b[0] - c[0]) < 0.5) || (Math.abs(a[1] - b[1]) < 0.5 && Math.abs(b[1] - c[1]) < 0.5)) out.splice(-2, 1)
+    }
+  }
+  return out
+}
+function pathD(pts, r = 12) {
+  let d = `M${pts[0][0]},${pts[0][1]}`
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1], [x, y] = pts[i], [nx, ny] = pts[i + 1]
+    const r1 = Math.min(r, Math.hypot(x - px, y - py) / 2, Math.hypot(nx - x, ny - y) / 2)
+    const ax = x - Math.sign(x - px) * r1, ay = y - Math.sign(y - py) * r1
+    const bx = x + Math.sign(nx - x) * r1, by = y + Math.sign(ny - y) * r1
+    d += ` L${ax},${ay} Q${x},${y} ${bx},${by}`
+  }
+  const l = pts.at(-1)
+  return d + ` L${l[0]},${l[1]}`
+}
+function labelAt(pts) { // middle of the longest segment
+  let best = 0, at = pts[0]
+  for (let i = 1; i < pts.length; i++) {
+    const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+    if (len > best) { best = len; at = [(pts[i][0] + pts[i - 1][0]) / 2, (pts[i][1] + pts[i - 1][1]) / 2] }
+  }
+  return at
+}
+const NS = "http://www.w3.org/2000/svg"
+function drawEdges() {
+  svg.innerHTML = ""
+  for (const [from, to, label, o = {}] of E) {
+    const a = box(from), b = box(to)
+    const pts = clean(route(a, o.fs || "r", b, o.ts || "l", o.via))
+    const g = document.createElementNS(NS, "g"); g.setAttribute("class", "edge-g"); g.dataset.from = from; g.dataset.to = to
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", pathD(pts)); p.setAttribute("class", "edge" + (o.dashed ? " dashed" : "")); g.appendChild(p)
+    const [ex, ey] = pts.at(-1), [qx, qy] = pts.at(-2), ang = Math.atan2(ey - qy, ex - qx)
+    const head = document.createElementNS(NS, "path")
+    const s = 7, w = 4.5
+    head.setAttribute("d", `M${ex},${ey} L${ex - s * Math.cos(ang) + w * Math.sin(ang)},${ey - s * Math.sin(ang) - w * Math.cos(ang)} L${ex - s * Math.cos(ang) - w * Math.sin(ang)},${ey - s * Math.sin(ang) + w * Math.cos(ang)} Z`)
+    head.setAttribute("class", "edge-head"); g.appendChild(head)
+    if (label) {
+      const [lx, ly] = o.lab === "last" ? [(pts.at(-1)[0] + pts.at(-2)[0]) / 2, (pts.at(-1)[1] + pts.at(-2)[1]) / 2] : labelAt(pts)
+      const lg = document.createElementNS(NS, "g"); lg.setAttribute("class", "edge-label")
+      const t = document.createElementNS(NS, "text"); t.textContent = label; t.setAttribute("x", lx); t.setAttribute("y", ly + 4); t.setAttribute("text-anchor", "middle")
+      const r = document.createElementNS(NS, "rect"); lg.appendChild(r); lg.appendChild(t); g.appendChild(lg)
+      svg.appendChild(g)
+      const bb = t.getBBox(); r.setAttribute("x", bb.x - 6); r.setAttribute("y", bb.y - 3); r.setAttribute("width", bb.width + 12); r.setAttribute("height", bb.height + 6); r.setAttribute("rx", 5)
+    } else svg.appendChild(g)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Paths
+const pathsEl = document.getElementById("paths"), detail = document.getElementById("detail")
+let current = "all"
+function select(id) {
+  current = id
+  const p = PATHS.find((x) => x.id === id)
+  const on = new Set(p.nodes)
+  world.classList.toggle("dim", id !== "all")
+  for (const [nid, n] of Object.entries(N)) n.el.classList.toggle("on", id !== "all" && on.has(nid))
+  for (const g of svg.querySelectorAll(".edge-g")) g.classList.toggle("on", id !== "all" && on.has(g.dataset.from) && on.has(g.dataset.to))
+  for (const b of pathsEl.children) b.setAttribute("aria-pressed", b.dataset.id === id)
+  detail.hidden = id === "all"
+  if (id !== "all") {
+    detail.innerHTML = `<h2>${esc(p.name)}</h2><ol>${p.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+      ${p.events.length ? `<div class="events">${p.events.map((e) => `<span class="chip">${esc(e)}</span>`).join("")}</div>` : ""}
+      <p class="why">${esc(p.why)}</p>
+      <div class="walk"><button id="prev" aria-label="Previous step">←</button><output id="walkval"></output><button id="next">Walk through →</button></div>`
+    document.getElementById("prev").onclick = () => walk(-1)
+    document.getElementById("next").onclick = () => walk(1)
+    step = -1; updateWalk()
+    fitTo(p.nodes)
+  } else fitTo(Object.keys(N))
+  try { localStorage.setItem("training-flow-path", id) } catch {}
+}
+for (const p of PATHS) {
+  const b = el("button", "path-btn", `<b>${esc(p.name)}</b><span>${esc(p.short)}</span>`)
+  b.dataset.id = p.id; b.onclick = () => select(p.id); pathsEl.appendChild(b)
+}
+
+// Walk through: the camera moves along the path one node at a time, at a readable zoom.
+let step = -1
+const walkIds = () => PATHS.find((x) => x.id === current).nodes
+function nodeName(id) { const n = N[id]; return n.title || n.q || n.text || n.el.textContent.trim().split(".")[0] }
+function updateWalk() {
+  const ids = walkIds(), val = document.getElementById("walkval")
+  for (const n of Object.values(N)) n.el.classList.remove("here")
+  if (!val) return
+  document.getElementById("prev").disabled = step <= 0
+  document.getElementById("next").disabled = step >= ids.length - 1
+  document.getElementById("next").textContent = step < 0 ? "Walk through →" : "Next →"
+  val.textContent = step < 0 ? `${ids.length} stops` : `${step + 1} of ${ids.length} · ${nodeName(ids[step])}`
+  if (step >= 0) N[ids[step]].el.classList.add("here")
+}
+function walk(d) {
+  const ids = walkIds()
+  step = Math.max(0, Math.min(ids.length - 1, step + d))
+  // Frame this stop with the next one, so the arrow between them shows.
+  fitTo(ids.slice(step, step + 2), true, 0.85)
+  updateWalk()
+}
+
+// ---------------------------------------------------------------------------
+// Pan and zoom
+const vp = document.getElementById("viewport"), zval = document.getElementById("zval")
+let tx = 0, ty = 0, k = 1
+let mode = "flow"
+const apply = () => { (mode === "summary" ? stage : world).style.transform = `translate(${tx}px, ${ty}px) scale(${k})`; zval.textContent = Math.round(k * 100) + "%" }
+function zoomAt(f, cx, cy) {
+  const nk = Math.min(2.5, Math.max(0.1, k * f))
+  tx = cx - (cx - tx) * (nk / k); ty = cy - (cy - ty) * (nk / k); k = nk; apply()
+}
+function fitTo(ids, animate = true, max = 1) {
+  let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity
+  for (const id of ids) { const x = box(id); l = Math.min(l, x.l); t = Math.min(t, x.t); r = Math.max(r, x.r); b = Math.max(b, x.b) }
+  for (const ln of LANES) if (ids.length === Object.keys(N).length) { l = Math.min(l, ln.x); t = Math.min(t, ln.y) }
+  const side = document.getElementById("side")
+  const wide = innerWidth > 900
+  const padL = wide ? side.offsetWidth + 48 : 24, padT = wide ? 32 : side.offsetHeight + 32
+  const W = innerWidth - padL - 32, H = innerHeight - padT - 72
+  k = Math.min(max, W / (r - l), H / (b - t))
+  tx = padL + (W - (r - l) * k) / 2 - l * k; ty = padT + (H - (b - t) * k) / 2 - t * k
+  if (animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    world.style.transition = "transform 0.45s cubic-bezier(0.2, 0, 0, 1)"
+    setTimeout(() => (world.style.transition = ""), 460)
+  }
+  apply()
+}
+const pointers = new Map()
+let last = null, pinch = null
+for (const pane of [vp, document.getElementById("summary")]) {
+  pane.addEventListener("wheel", (e) => {
+    e.preventDefault()
+    if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY)
+    else { tx -= e.deltaX; ty -= e.deltaY; apply() }
+  }, { passive: false })
+  pane.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".shot, a, button")) return
+    pane.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); pane.classList.add("dragging")
+    last = [e.clientX, e.clientY]
+  })
+  pane.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return
+    pointers.set(e.pointerId, [e.clientX, e.clientY])
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), c = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+      if (pinch) { zoomAt(d / pinch.d, c[0], c[1]); tx += c[0] - pinch.c[0]; ty += c[1] - pinch.c[1]; apply() }
+      pinch = { d, c }; return
+    }
+    tx += e.clientX - last[0]; ty += e.clientY - last[1]; last = [e.clientX, e.clientY]; apply()
+  })
+  const up = (e) => { pointers.delete(e.pointerId); pinch = null; if (!pointers.size) pane.classList.remove("dragging"); const r = [...pointers.values()][0]; if (r) last = r }
+  pane.addEventListener("pointerup", up); pane.addEventListener("pointercancel", up)
+}
+const refit = () => (mode === "summary" ? fitSummary() : select(current))
+document.getElementById("zin").onclick = () => zoomAt(1.25, innerWidth / 2, innerHeight / 2)
+document.getElementById("zout").onclick = () => zoomAt(0.8, innerWidth / 2, innerHeight / 2)
+document.getElementById("zfit").onclick = refit
+addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea")) return
+  if (e.key === "Escape" && !lb.hidden) closeLb()
+  else if (e.key === "+" || e.key === "=") zoomAt(1.25, innerWidth / 2, innerHeight / 2)
+  else if (e.key === "-") zoomAt(0.8, innerWidth / 2, innerHeight / 2)
+  else if (e.key === "0") refit()
+  else if (e.key === "ArrowRight" && current !== "all" && mode === "flow") walk(1)
+  else if (e.key === "ArrowLeft" && current !== "all" && mode === "flow") walk(-1)
+})
+
+// Lightbox
+const lb = document.getElementById("lightbox"), lbimg = document.getElementById("lbimg"), lbcap = document.getElementById("lbcap")
+let lbFrom = null
+world.addEventListener("click", (e) => {
+  const full = e.target.closest("[data-open]")
+  if (full) { e.preventDefault(); openFull(full.dataset.open, full); return }
+  const s = e.target.closest(".shot"); if (s) openShot(s)
+})
+function openShot(s) {
+  const n = Object.values(N).find((x) => x.img === s.dataset.img)
+  lbimg.src = `shots/${n.img}.jpg`; lbimg.alt = n.title; lbcap.textContent = `${n.title}. ${n.sub}`
+  lb.classList.remove("tall"); lbFrom = s; lb.hidden = false; document.getElementById("lbclose").focus()
+}
+function openFull(img, from) {
+  lbimg.src = `shots/${img}.jpg`; lbimg.alt = "Full-length page"; lbcap.textContent = "Full length. Scroll to see it all."
+  lb.classList.add("tall"); lb.scrollTop = 0; lbFrom = from; lb.hidden = false; document.getElementById("lbclose").focus()
+}
+function closeLb() { lb.hidden = true; lb.classList.remove("tall"); lbFrom?.focus() }
+document.getElementById("lbclose").onclick = closeLb
+lb.addEventListener("click", (e) => { if (e.target === lb) closeLb() })
+
+// ---------------------------------------------------------------------------
+// Paywall summary
+const summary = document.getElementById("summary"), stage = document.getElementById("stage"), sumSvg = document.getElementById("sum-edges")
+const S = SUMMARY
+const shotBtn = (img, title) => `<button class="shot" data-img="${img}" aria-label="Enlarge ${esc(title)}"><img src="shots/${img}.jpg" alt="${esc(title)}" loading="lazy"></button>`
+stage.insertAdjacentHTML("beforeend", `
+  <div class="sum-heads"><div class="sum-head">${S.doors.length} doors, group B only</div><div class="sum-head">1 paywall</div><div class="sum-head">2 answers</div><div class="sum-head">Then</div></div>
+  <div class="sum-cols">
+    <div class="sum-col"><div class="sum-stack" id="sum-doors">
+      ${S.doors.map((d) => `<button class="door" data-path="${d.path}"><img src="shots/${d.img}.jpg" alt="" loading="lazy">
+        <div><b>${esc(d.title)}</b><span>${esc(d.line)}</span><div class="chips"><span class="chip">source: ${esc(d.source)}</span></div><div class="go">See the full path →</div></div></button>`).join("")}
+    </div></div>
+    <div class="sum-col"><div class="sum-card" id="sum-pw">
+      ${shotBtn(S.paywall.img, S.paywall.title)}<h3>${esc(S.paywall.title)}</h3><p>${esc(S.paywall.line)}</p>
+      <div class="tags">${S.doors.map((d) => `<span>${esc(d.tag)}</span>`).join("")}</div>
+    </div></div>
+    <div class="sum-col"><div class="sum-stack" id="sum-answers" style="gap:40px">
+      ${S.answers.map((a) => `<div class="sum-card">${shotBtn(a.img, a.title)}<h3>${esc(a.title)}</h3><p>${esc(a.line)}</p></div>`).join("")}
+    </div></div>
+    <div class="sum-col"><div class="end" id="sum-end">${S.end}</div></div>
+  </div>
+  <div class="sum-foot">
+    <div class="note"><b>The paywall never shows:</b><ul>${S.never.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
+    <div class="note">${S.control}</div>
+  </div>`)
+summary.addEventListener("click", (e) => {
+  const d = e.target.closest(".door"); if (d) { setMode("flow"); select(d.dataset.path); return }
+  const s = e.target.closest(".shot"); if (s) openShot(s)
+})
+function drawSummary() {
+  sumSvg.innerHTML = ""
+  const o = stage.getBoundingClientRect(), sc = o.width / stage.offsetWidth
+  const r = (e) => { const b = e.getBoundingClientRect(); return { l: (b.left - o.left) / sc, r: (b.right - o.left) / sc, cy: (b.top + b.height / 2 - o.top) / sc } }
+  const midOfShot = (card) => { const s = card.querySelector(".shot") || card, b = r(s), c = r(card); return { l: c.l, r: c.r, cy: b.cy } }
+  const line = (a, b) => { // right side of a → left side of b, one rounded elbow halfway
+    const mx = (a.r + b.l) / 2, pts = clean([[a.r, a.cy], [mx, a.cy], [mx, b.cy], [b.l, b.cy]])
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", pathD(pts)); p.setAttribute("class", "edge"); sumSvg.appendChild(p)
+    const h = document.createElementNS(NS, "path"); h.setAttribute("d", `M${b.l},${b.cy} l-7,-4.5 l0,9 Z`); h.setAttribute("class", "edge-head"); sumSvg.appendChild(h)
+  }
+  const pw = midOfShot(document.getElementById("sum-pw")), end = r(document.getElementById("sum-end"))
+  for (const d of document.querySelectorAll("#sum-doors .door")) line(r(d), pw)
+  for (const a of document.querySelectorAll("#sum-answers .sum-card")) { const b = midOfShot(a); line(pw, b); line(b, end) }
+}
+function fitSummary() {
+  const sideEl = document.getElementById("side"), wide = innerWidth > 900
+  const padL = wide ? sideEl.offsetWidth + 48 : 16, padT = wide ? 32 : sideEl.offsetHeight + 32
+  const W = innerWidth - padL - 32, H = innerHeight - padT - 32
+  k = Math.min(1, W / stage.offsetWidth, wide ? H / stage.offsetHeight : 1)
+  tx = padL + Math.max(0, (W - stage.offsetWidth * k) / 2)
+  ty = padT + (wide ? Math.max(0, (H - stage.offsetHeight * k) / 2) : 0)
+  apply()
+  drawSummary()
+}
+function setMode(m) {
+  mode = m
+  document.body.classList.toggle("summary", m === "summary")
+  for (const b of document.querySelectorAll(".seg button")) b.setAttribute("aria-pressed", b.dataset.mode === m)
+  if (m === "summary") fitSummary(); else select(current)
+  try { localStorage.setItem("training-flow-mode", m) } catch {}
+}
+for (const b of document.querySelectorAll(".seg button")) b.onclick = () => setMode(b.dataset.mode)
+for (const img of stage.querySelectorAll("img")) img.addEventListener("load", () => mode === "summary" && fitSummary())
+
+// Side panel toggle
+const side = document.getElementById("side"), toggle = document.getElementById("toggle")
+toggle.onclick = () => { const c = side.classList.toggle("collapsed"); toggle.textContent = c ? "Show paths" : "Hide"; toggle.setAttribute("aria-expanded", !c) }
+if (innerWidth < 520) toggle.click()
+
+function boot() {
+  drawEdges()
+  let start = "all"
+  try { const s = location.hash.slice(1) || localStorage.getItem("training-flow-path"); if (PATHS.some((p) => p.id === s)) start = s } catch {}
+  select(start)
+  fitTo(PATHS.find((p) => p.id === start).nodes, false)
+  let m = "flow"
+  try { m = location.hash === "#summary" ? "summary" : localStorage.getItem("training-flow-mode") || "flow" } catch {}
+  setMode(m === "summary" ? "summary" : "flow")
+}
+// Edges need the screens' real heights: wait for fonts, then redraw when pictures settle.
+(document.fonts?.ready ?? Promise.resolve()).then(boot)
+addEventListener("resize", refit)
+</script>

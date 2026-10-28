@@ -1,0 +1,4 @@
+# headless Chrome profiles made by the capture scripts, and build output
+chrome-profile*/
+dist/
+question-review/index.html

@@ -1,0 +1,344 @@
+{
+ "BS-001": {
+  "q": "shots/BS-001-q.jpg"
+ },
+ "BS-002": {
+  "q": "shots/BS-002-q.jpg",
+  "a": "shots/BS-002-a.jpg"
+ },
+ "BS-003": {
+  "q": "shots/BS-003-q.jpg",
+  "a": "shots/BS-003-a.jpg"
+ },
+ "BS-004": {
+  "q": "shots/BS-004-q.jpg"
+ },
+ "BS-005": {
+  "q": "shots/BS-005-q.jpg",
+  "a": "shots/BS-005-a.jpg"
+ },
+ "BS-006": {
+  "q": "shots/BS-006-q.jpg",
+  "a": "shots/BS-006-a.jpg"
+ },
+ "BS-007": {
+  "q": "shots/BS-007-q.jpg"
+ },
+ "BS-008": {
+  "q": "shots/BS-008-q.jpg",
+  "a": "shots/BS-008-a.jpg"
+ },
+ "BS-009": {
+  "q": "shots/BS-009-q.jpg"
+ },
+ "BS-010": {
+  "q": "shots/BS-010-q.jpg"
+ },
+ "BS-011": {
+  "q": "shots/BS-011-q.jpg",
+  "a": "shots/BS-011-a.jpg"
+ },
+ "BS-012": {
+  "q": "shots/BS-012-q.jpg",
+  "a": "shots/BS-012-a.jpg"
+ },
+ "BS-013": {
+  "q": "shots/BS-013-q.jpg"
+ },
+ "BS-014": {
+  "q": "shots/BS-014-q.jpg",
+  "a": "shots/BS-014-a.jpg"
+ },
+ "BS-015": {
+  "q": "shots/BS-015-q.jpg"
+ },
+ "BS-016": {
+  "q": "shots/BS-016-q.jpg",
+  "a": "shots/BS-016-a.jpg"
+ },
+ "BS-017": {
+  "q": "shots/BS-017-q.jpg",
+  "a": "shots/BS-017-a.jpg"
+ },
+ "BS-018": {
+  "q": "shots/BS-018-q.jpg",
+  "a": "shots/BS-018-a.jpg"
+ },
+ "BS-019": {
+  "q": "shots/BS-019-q.jpg",
+  "a": "shots/BS-019-a.jpg"
+ },
+ "BS-020": {
+  "q": "shots/BS-020-q.jpg",
+  "a": "shots/BS-020-a.jpg"
+ },
+ "BS-021": {
+  "q": "shots/BS-021-q.jpg",
+  "a": "shots/BS-021-a.jpg"
+ },
+ "BS-022": {
+  "q": "shots/BS-022-q.jpg",
+  "a": "shots/BS-022-a.jpg"
+ },
+ "BS-023": {
+  "q": "shots/BS-023-q.jpg"
+ },
+ "BS-024": {
+  "q": "shots/BS-024-q.jpg",
+  "a": "shots/BS-024-a.jpg"
+ },
+ "BS-025": {
+  "q": "shots/BS-025-q.jpg",
+  "a": "shots/BS-025-a.jpg"
+ },
+ "BS-026": {
+  "q": "shots/BS-026-q.jpg"
+ },
+ "BS-027": {
+  "q": "shots/BS-027-q.jpg",
+  "a": "shots/BS-027-a.jpg"
+ },
+ "BS-028": {
+  "q": "shots/BS-028-q.jpg"
+ },
+ "BS-029": {
+  "q": "shots/BS-029-q.jpg",
+  "a": "shots/BS-029-a.jpg"
+ },
+ "BS-030": {
+  "q": "shots/BS-030-q.jpg",
+  "a": "shots/BS-030-a.jpg"
+ },
+ "BS-031": {
+  "q": "shots/BS-031-q.jpg"
+ },
+ "BS-032": {
+  "q": "shots/BS-032-q.jpg",
+  "a": "shots/BS-032-a.jpg"
+ },
+ "BS-033": {
+  "q": "shots/BS-033-q.jpg"
+ },
+ "BS-034": {
+  "q": "shots/BS-034-q.jpg",
+  "a": "shots/BS-034-a.jpg"
+ },
+ "BS-035": {
+  "q": "shots/BS-035-q.jpg",
+  "a": "shots/BS-035-a.jpg"
+ },
+ "BS-036": {
+  "q": "shots/BS-036-q.jpg",
+  "a": "shots/BS-036-a.jpg"
+ },
+ "BS-037": {
+  "q": "shots/BS-037-q.jpg",
+  "a": "shots/BS-037-a.jpg"
+ },
+ "BS-038": {
+  "q": "shots/BS-038-q.jpg",
+  "a": "shots/BS-038-a.jpg"
+ },
+ "BS-039": {
+  "q": "shots/BS-039-q.jpg",
+  "a": "shots/BS-039-a.jpg"
+ },
+ "BS-040": {
+  "q": "shots/BS-040-q.jpg",
+  "a": "shots/BS-040-a.jpg"
+ },
+ "BS-041": {
+  "q": "shots/BS-041-q.jpg",
+  "a": "shots/BS-041-a.jpg"
+ },
+ "BS-042": {
+  "q": "shots/BS-042-q.jpg",
+  "a": "shots/BS-042-a.jpg"
+ },
+ "BS-043": {
+  "q": "shots/BS-043-q.jpg"
+ },
+ "BS-044": {
+  "q": "shots/BS-044-q.jpg",
+  "a": "shots/BS-044-a.jpg"
+ },
+ "BS-045": {
+  "q": "shots/BS-045-q.jpg"
+ },
+ "BS-046": {
+  "q": "shots/BS-046-q.jpg",
+  "a": "shots/BS-046-a.jpg"
+ },
+ "BS-047": {
+  "q": "shots/BS-047-q.jpg",
+  "a": "shots/BS-047-a.jpg"
+ },
+ "BS-048": {
+  "q": "shots/BS-048-q.jpg"
+ },
+ "BS-049": {
+  "q": "shots/BS-049-q.jpg",
+  "a": "shots/BS-049-a.jpg"
+ },
+ "BS-050": {
+  "q": "shots/BS-050-q.jpg",
+  "a": "shots/BS-050-a.jpg"
+ },
+ "BS-051": {
+  "q": "shots/BS-051-q.jpg"
+ },
+ "BS-052": {
+  "q": "shots/BS-052-q.jpg",
+  "a": "shots/BS-052-a.jpg"
+ },
+ "BS-053": {
+  "q": "shots/BS-053-q.jpg",
+  "a": "shots/BS-053-a.jpg"
+ },
+ "BS-054": {
+  "q": "shots/BS-054-q.jpg",
+  "a": "shots/BS-054-a.jpg"
+ },
+ "BS-055": {
+  "q": "shots/BS-055-q.jpg"
+ },
+ "BS-056": {
+  "q": "shots/BS-056-q.jpg",
+  "a": "shots/BS-056-a.jpg"
+ },
+ "BS-057": {
+  "q": "shots/BS-057-q.jpg",
+  "a": "shots/BS-057-a.jpg"
+ },
+ "BS-058": {
+  "q": "shots/BS-058-q.jpg",
+  "a": "shots/BS-058-a.jpg"
+ },
+ "BS-059": {
+  "q": "shots/BS-059-q.jpg",
+  "a": "shots/BS-059-a.jpg"
+ },
+ "BS-060": {
+  "q": "shots/BS-060-q.jpg",
+  "a": "shots/BS-060-a.jpg"
+ },
+ "BS-061": {
+  "q": "shots/BS-061-q.jpg",
+  "a": "shots/BS-061-a.jpg"
+ },
+ "BS-062": {
+  "q": "shots/BS-062-q.jpg",
+  "a": "shots/BS-062-a.jpg"
+ },
+ "BS-063": {
+  "q": "shots/BS-063-q.jpg",
+  "a": "shots/BS-063-a.jpg"
+ },
+ "BS-064": {
+  "q": "shots/BS-064-q.jpg",
+  "a": "shots/BS-064-a.jpg"
+ },
+ "BS-065": {
+  "q": "shots/BS-065-q.jpg",
+  "a": "shots/BS-065-a.jpg"
+ },
+ "BS-067": {
+  "q": "shots/BS-067-q.jpg"
+ },
+ "BS-068": {
+  "q": "shots/BS-068-q.jpg"
+ },
+ "BS-069": {
+  "q": "shots/BS-069-q.jpg"
+ },
+ "BS-070": {
+  "q": "shots/BS-070-q.jpg"
+ },
+ "BS-071": {
+  "q": "shots/BS-071-q.jpg",
+  "a": "shots/BS-071-a.jpg"
+ },
+ "BS-072": {
+  "q": "shots/BS-072-q.jpg"
+ },
+ "BS-073": {
+  "q": "shots/BS-073-q.jpg",
+  "a": "shots/BS-073-a.jpg"
+ },
+ "BS-074": {
+  "q": "shots/BS-074-q.jpg",
+  "a": "shots/BS-074-a.jpg"
+ },
+ "BS-075": {
+  "q": "shots/BS-075-q.jpg"
+ },
+ "BS-076": {
+  "q": "shots/BS-076-q.jpg"
+ },
+ "BS-077": {
+  "q": "shots/BS-077-q.jpg",
+  "a": "shots/BS-077-a.jpg"
+ },
+ "BS-078": {
+  "q": "shots/BS-078-q.jpg",
+  "a": "shots/BS-078-a.jpg"
+ },
+ "BS-079": {
+  "q": "shots/BS-079-q.jpg",
+  "a": "shots/BS-079-a.jpg"
+ },
+ "BS-080": {
+  "q": "shots/BS-080-q.jpg",
+  "a": "shots/BS-080-a.jpg"
+ },
+ "BS-081": {
+  "q": "shots/BS-081-q.jpg",
+  "a": "shots/BS-081-a.jpg"
+ },
+ "BS-082": {
+  "q": "shots/BS-082-q.jpg",
+  "a": "shots/BS-082-a.jpg"
+ },
+ "BS-083": {
+  "q": "shots/BS-083-q.jpg",
+  "a": "shots/BS-083-a.jpg"
+ },
+ "BS-084": {
+  "q": "shots/BS-084-q.jpg",
+  "a": "shots/BS-084-a.jpg"
+ },
+ "TF-001": {
+  "q": "shots/TF-001-q.jpg",
+  "a": "shots/TF-001-a.jpg"
+ },
+ "TF-002": {
+  "q": "shots/TF-002-q.jpg"
+ },
+ "TF-003": {
+  "q": "shots/TF-003-q.jpg"
+ },
+ "TF-004": {
+  "q": "shots/TF-004-q.jpg"
+ },
+ "TF-005": {
+  "q": "shots/TF-005-q.jpg"
+ },
+ "TF-006": {
+  "q": "shots/TF-006-q.jpg"
+ },
+ "TF-007": {
+  "q": "shots/TF-007-q.jpg"
+ },
+ "TF-008": {
+  "q": "shots/TF-008-q.jpg"
+ },
+ "TF-009": {
+  "q": "shots/TF-009-q.jpg"
+ },
+ "TF-010": {
+  "q": "shots/TF-010-q.jpg"
+ },
+ "BS-066": {
+  "q": "shots/BS-066-q.jpg"
+ }
+}
