@@ -115,7 +115,12 @@ export function parseAnswer(raw: string) {
   const mult = s.endsWith("k") ? 1_000 : s.endsWith("m") ? 1_000_000 : 1
   const body = s.replace(/[km]$/, "")
   // "6,000" → thousands separator; "0,5" → decimal comma.
-  const normalized = /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(body) ? body.replace(/,/g, "") : body.replace(",", ".")
+  // "18.135" → dot thousands (European); always ≥ 1000, so "1.5", "0.25" and "2.94" stay decimals.
+  const normalized = /^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(body)
+    ? body.replace(/,/g, "")
+    : /^-?\d{1,3}(\.\d{3})+$/.test(body)
+      ? body.replace(/\./g, "")
+      : body.replace(",", ".")
   const n = parseFloat(normalized.replace(/[^0-9.\-]/g, ""))
   return Number.isFinite(n) ? n * mult : null
 }

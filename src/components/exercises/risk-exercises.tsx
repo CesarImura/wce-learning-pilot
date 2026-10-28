@@ -110,7 +110,7 @@ export function PositionSizer({ phase, onReady }: ExerciseProps) {
     <div className="flex flex-col gap-4">
       <QuestionBox
         id="ps"
-        question="Your stop is 40 pips and your broker caps you at 0.5 lots. What's the max risk %?"
+        question="Your stop is 40 pips and your broker caps you at 0.5 lots. What's the max risk %? (each pip is worth $10 per lot)"
         value={answer}
         placeholder="e.g. 1.5"
         onChange={setAnswer}
@@ -436,6 +436,10 @@ export function OrderBook({ phase, onReady }: ExerciseProps) {
   const { used, avg, slippage } = fillMarketBuy(size)
   const maxSize = Math.max(...ASKS.map((a) => a.size), ...BIDS.map((b) => b.size))
   const limit = 0.03
+  const nudge = (d: number) => {
+    setMoved(true)
+    setSize((s) => Math.min(6, Math.max(0.1, +(s + d).toFixed(1))))
+  }
 
   useEffect(() => {
     if (!moved) return onReady(null)
@@ -495,18 +499,40 @@ export function OrderBook({ phase, onReady }: ExerciseProps) {
       <Panel title="Order size" hint="Raise the size and watch the order eat through the asks above the best price.">
         <div className="space-y-2">
           <RowHead label="Market buy size" value={`${size.toFixed(1)} BTC`} />
-          <Slider
-            min={0.1}
-            max={6}
-            step={0.1}
-            format={(v) => `${v.toFixed(1)} BTC`}
-            value={[size]}
-            disabled={review}
-            onValueChange={(v) => {
-              setMoved(true)
-              setSize(+sliderValue(v).toFixed(1))
-            }}
-          />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Decrease size by 0.1"
+              disabled={review || size <= 0.1}
+              onClick={() => nudge(-0.1)}
+            >
+              −
+            </Button>
+            <div className="min-w-0 flex-1">
+              <Slider
+                min={0.1}
+                max={6}
+                step={0.1}
+                format={(v) => `${v.toFixed(1)} BTC`}
+                value={[size]}
+                disabled={review}
+                onValueChange={(v) => {
+                  setMoved(true)
+                  setSize(+sliderValue(v).toFixed(1))
+                }}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Increase size by 0.1"
+              disabled={review || size >= 6}
+              onClick={() => nudge(0.1)}
+            >
+              +
+            </Button>
+          </div>
         </div>
       </Panel>
     </div>

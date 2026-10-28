@@ -500,7 +500,7 @@ export type NumberProps = {
 export function NumberAnswer({
   question,
   answer,
-  tolerance = 0.01,
+  tolerance,
   unit,
   unitBefore,
   given,
@@ -519,8 +519,12 @@ export function NumberAnswer({
     if (n === null) return onReady(null)
     // A wrong answer shows the right value and the worked explanation, not just a hint.
     const shown = `${unit && unitBefore ? unit : ""}${answer.toLocaleString("en-US", { maximumFractionDigits: 2 })}${unit && !unitBefore ? unit : ""}`
+    // An explicit tolerance is used as-is; the 0.1% floor only applies when none was given.
+    const tol = tolerance ?? Math.max(0.01, Math.abs(answer) * 0.001)
+    // Percent answers may be typed as decimals ("0.25" for 25%).
+    const ok = Math.abs(n - answer) <= tol || (unit === "%" && Math.abs(n * 100 - answer) <= tol)
     onReady(() =>
-      Math.abs(n - answer) <= Math.max(tolerance, Math.abs(answer) * 0.001)
+      ok
         ? { correct: true, detail: correct }
         : { correct: false, answer: shown, detail: correct },
     )

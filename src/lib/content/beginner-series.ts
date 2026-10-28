@@ -81,7 +81,7 @@ const TEST_PROFESSION: Step[] = [
     items: [
       { label: "Full-time employee with a fixed schedule", bucket: "swing" },
       { label: "Business owner who's needed all day", bucket: "swing" },
-      { label: "Freelancer who controls their own hours", bucket: "day" },
+      { label: "Freelancer who's free every day at the New York open", bucket: "day" },
     ],
     explain: "If your time depends on someone else, trade styles that don't need you at the screen at fixed hours.",
   }),
@@ -143,7 +143,7 @@ const TEST_MARKETS: Step[] = [
       { label: "Long maturities yield more than short ones", bucket: "normal" },
       { label: "Reflects the term premium", bucket: "normal" },
       { label: "Short-term yields above long-term yields", bucket: "inverted" },
-      { label: "Typically appears when rate hikes are expected", bucket: "inverted" },
+      { label: "Appears after aggressive rate hikes, often before recessions", bucket: "inverted" },
     ],
     explain: "Normally you're paid more to lend for longer. Expected hikes push short yields above long ones.",
   }),
@@ -868,8 +868,8 @@ export const beginnerSeries: Course = {
               buckets: [
                 { id: "infl", label: "Inflation" },
                 { id: "jobs", label: "Employment" },
-                { id: "soft", label: "Soft data" },
-                { id: "growth", label: "Growth" },
+                { id: "soft", label: "Soft data", hint: "Surveys: PMI, sentiment, confidence" },
+                { id: "growth", label: "Growth", hint: "Hard output data: GDP, retail sales, industrial production" },
               ],
               items: [
                 { label: "CPI", bucket: "infl" },
@@ -903,7 +903,7 @@ export const beginnerSeries: Course = {
           steps: [
             STEPS["candle-scrub"],
             STEPS["candle-builder"],
-            { ...STEPS["sort-charts"], prompt: "Dow's idea: is each market trending or consolidating?" },
+            { ...STEPS["sort-charts"], prompt: "Dow's idea: is each market trending or ranging (consolidating)?" },
             concept("Price + volume: auction market theory", {
               quote: "When you think about volume, think about money.",
               body: [
