@@ -96,7 +96,7 @@ export const STEPS: Record<DemoKind, Step> = {
     mode: "exercise",
     eyebrow: "Spot it",
     prompt: "Tap the bullish engulfing candle",
-    help: { hint: "Look at the end of the downtrend: a small red candle, then a green one whose body is bigger and covers it completely." },
+    help: { hint: "Look at the end of the downtrend: a red candle, then a green one whose body is bigger and covers it completely." },
   },
   "draw-support": {
     kind: "draw-support",

@@ -40,10 +40,10 @@ export function TapEngulfing({ phase, onReady, autoAnswer }: ExerciseProps) {
             visual,
           }
         : Math.abs(picked - target) === 1
-          ? { correct: false, detail: "So close! The engulfing candle is the big green one that wraps the small red one.", visual }
+          ? { correct: false, detail: "So close! The engulfing candle is the big green one that wraps the red one before it.", visual }
           : {
               correct: false,
-              detail: "Look for a small red candle followed by a green candle whose body covers it completely.",
+              detail: "Look for a red candle followed by a green candle whose body covers it completely.",
               visual,
             },
     )
@@ -111,7 +111,7 @@ function EngulfingWhy({ candles, target }: { candles: Candle[]; target: number }
   const steps = ["Price is falling", "Small red candle", "Green body covers it"]
   return (
     <figure className="flex flex-col gap-4 rounded-[8px] border border-white/10 bg-[#0c0c0c] p-4">
-      <svg viewBox={`0 0 520 ${H}`} className="w-full" role="img" aria-label="A downtrend ending in a small red candle and a green candle whose body covers the red body">
+      <svg viewBox={`0 0 520 ${H}`} className="w-full" role="img" aria-label="A downtrend ending in a red candle and a green candle whose body covers the red body">
         {lead.map((c, i) => candle(c, lx(i), 10, ly, cn(c.c >= c.o ? "text-up" : "text-down", i < 8 ? "opacity-40" : "opacity-90")))}
         {marker(1, lx(0) + 4, ly(lead[0].h) - 24)}
 
