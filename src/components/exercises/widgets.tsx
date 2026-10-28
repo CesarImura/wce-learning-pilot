@@ -3,7 +3,7 @@
 // Interactive widgets for the Beginner Series (Andrea Cimitan). Each one turns a
 // concept from the transcripts into something the learner manipulates.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode, type RefObject } from "react"
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,6 +63,7 @@ function useNumberQuestion(
   correct: string,
   shown: string,
   onReady: ExerciseProps["onReady"],
+  trap?: { value: number; detail: string },
 ) {
   useEffect(() => {
     const n = parseAnswer(raw)
@@ -71,9 +72,13 @@ function useNumberQuestion(
     onReady(() =>
       Math.abs(n - answer) <= tolerance
         ? { correct: true, detail: correct }
-        : { correct: false, answer: shown, detail: correct },
+        : {
+            correct: false,
+            answer: shown,
+            detail: trap && Math.abs(n - trap.value) <= tolerance ? trap.detail : correct,
+          },
     )
-  }, [raw, answer, tolerance, correct, shown, onReady])
+  }, [raw, answer, tolerance, correct, shown, onReady, trap])
 }
 
 /**
@@ -164,6 +169,11 @@ const BENCHMARKS = [
   { id: "guru", label: "Instagram guru: “10% a month”", short: "Guru", rate: Math.pow(1.1, 12) - 1 },
 ]
 
+const RETURNS_TRAP = {
+  value: 16_000,
+  detail: "That's your balance after a year. The profit is $6,000 (60% of $10,000).",
+}
+
 export function ReturnsReality({ phase, onReady, autoAnswer }: ExerciseProps) {
   const [account, setAccount] = useState(25_000)
   const [raw, setRaw] = useState("")
@@ -175,6 +185,7 @@ export function ReturnsReality({ phase, onReady, autoAnswer }: ExerciseProps) {
     "Even matching the best quant fund in history turns $10,000 into a $6,000 profit. Nobody lives on that, which is why trading isn't a get-rich-quick business model.",
     "$6,000",
     onReady,
+    RETURNS_TRAP,
   )
   useAutoAnswer(autoAnswer, (v) => setRaw(v === "correct" ? "6000" : "15000"))
   // After answering, the calculator shows the worked question.
@@ -185,7 +196,7 @@ export function ReturnsReality({ phase, onReady, autoAnswer }: ExerciseProps) {
     <div className="flex flex-col gap-4">
       <QuestionBox
         id="rr-q"
-        question="With $10,000 and Jim Simons-level returns (60% a year), how much do you make in a year?"
+        question="With $10,000 and Jim Simons-level returns (60% a year), how much profit do you make in a year?"
         value={raw}
         onChange={setRaw}
         disabled={review}
@@ -295,8 +306,8 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
             answer: "1 : 2 at a 33% win rate",
             detail:
               pt.r !== 2
-                ? `You're at 1 : ${pt.r}. Slide right to 1 : 2 (x = 2): there you only need to win 1 / (1 + 2) = 33% of the time to break even.`
-                : `Close: at 1 : 2 break-even is 1 / (1 + 2) ≈ 33%. You're at ${pt.w}% (profit factor ${pf.toFixed(2)}).`,
+                ? `You're at 1 : ${pt.r}. Slide ${pt.r < 2 ? "right" : "left"} to 1 : 2 (x = 2): there you only need to win 1 / (1 + 2) = 33% of the time to break even.`
+                : `${Math.abs(pt.w - 100 / 3) <= 10 ? "Close: a" : "A"}t 1 : 2 break-even is 1 / (1 + 2) ≈ 33%. You're at ${pt.w}%${Math.abs(pt.w - 100 / 3) <= 10 ? ` (profit factor ${pf.toFixed(2)})` : ""}.`,
           },
     )
   }, [pt, moved, pf, onReady])
@@ -304,7 +315,7 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2">
-        <Stat label="Reward : risk" value={`1 : ${pt.r}`} />
+        <Stat label="Risk : reward" value={`1 : ${pt.r}`} />
         <Stat label="Win rate" value={`${pt.w}%`} />
         <Stat
           label="Profit factor"
@@ -347,7 +358,7 @@ export function BreakevenCurve({ phase, onReady, autoAnswer }: ExerciseProps) {
             </text>
           ))}
           <text x={R} y={B + 36} textAnchor="end" className="fill-white/40 text-[11px] uppercase">
-            reward : risk →
+            risk : reward →
           </text>
           <text x={x(3.2)} y={y(70)} className="fill-up text-[13px] font-semibold">
             Profitable (PF &gt; 1)
@@ -513,7 +524,10 @@ export function YieldCurveBuilder({ phase, onReady }: ExerciseProps) {
   const y = (v: number) => B - (v / 8) * (B - T)
   const fromY = (py: number) => Math.min(8, Math.max(0, ((B - py) / (B - T)) * 8))
 
-  const normal = yields.every((v, i) => i === 0 || v >= yields[i - 1] - 0.05) && yields[5] - yields[0] >= 1
+  // One snap step (0.1) of slack so a tiny dip still counts; 30Y must clear 3M by 0.5.
+  const dip = yields.findIndex((v, i) => i > 0 && v < yields[i - 1] - 0.1 - 1e-9)
+  const spread = yields[5] - yields[0]
+  const normal = dip === -1 && spread >= 0.5 - 1e-9
   useEffect(() => {
     if (!moved) return onReady(null)
     onReady(() =>
@@ -521,15 +535,17 @@ export function YieldCurveBuilder({ phase, onReady }: ExerciseProps) {
         ? {
             correct: true,
             detail:
-              "That's a normal yield curve: the longer you lend, the more you get paid (the term premium). When short yields rise above long ones, the curve inverts, typically when rate hikes are expected.",
+              "That's a normal yield curve: the longer you lend, the more you get paid (the term premium). When short yields rise above long ones, the curve inverts, typically after aggressive rate hikes, when markets expect cuts or a recession.",
           }
         : {
             correct: false,
             detail:
-              "Each maturity should pay at least as much as the shorter one before it, and 30Y should pay clearly more than 3M (at least 1% more).",
+              dip !== -1
+                ? `${MATURITIES[dip]} (${yields[dip].toFixed(1)}%) pays less than ${MATURITIES[dip - 1]} (${yields[dip - 1].toFixed(1)}%): longer should pay at least as much.`
+                : `30Y is only ${spread.toFixed(1)}% above 3M: make the long end clearly higher (at least 0.5%).`,
           },
     )
-  }, [moved, normal, onReady])
+  }, [moved, normal, dip, yields, spread, onReady])
 
   return (
     <div className="space-y-3">
@@ -589,7 +605,7 @@ export function YieldCurveBuilder({ phase, onReady }: ExerciseProps) {
         </svg>
       </ChartFrame>
       <p className="px-1 text-[13px] text-white/50">
-        Drag each dot up or down. X axis: how long you lend (maturity). Y axis: the yield you demand.
+        Drag each dot up or down. X axis: how long you lend (maturity). Y axis: the yield you demand. Each maturity should pay at least as much as the one before, with 30Y clearly above 3M.
       </p>
     </div>
   )
@@ -946,7 +962,7 @@ export function RealYieldGold({ phase, onReady, autoAnswer }: ExerciseProps) {
   useNumberQuestion(
     raw,
     3,
-    0.01,
+    0.06,
     "5% − 2% = a 3% real yield. That's a solid, safe inflation hedge, so money prefers bonds and gold tends to suffer. When real yields fall, gold shines.",
     "3%",
     onReady,
@@ -1206,6 +1222,15 @@ export function OrbBreakout({ phase, onReady }: ExerciseProps) {
   const stop = orLow
   const target = entry + 2 * (entry - stop)
   const maxVol = Math.max(...volume)
+  // Right edge of the visible candles as a fraction of the chart width. Taps in the empty
+  // area beyond it must not pick (the browser would clamp them to the last visible candle).
+  const edge = useRef(1)
+  const ignoreBeyondEdge = (e: PointerEvent<HTMLDivElement>) => {
+    const svg = e.currentTarget.querySelector("svg")
+    if (!svg) return
+    const box = svg.getBoundingClientRect()
+    if (e.clientX > box.left + edge.current * box.width) e.stopPropagation()
+  }
 
   useEffect(() => {
     if (pick === null) return onReady(null)
@@ -1233,6 +1258,7 @@ export function OrbBreakout({ phase, onReady }: ExerciseProps) {
   return (
     <div className="space-y-3">
       <ChartFrame>
+        <div onPointerDownCapture={ignoreBeyondEdge} onPointerMoveCapture={ignoreBeyondEdge}>
         <CandleChart
           candles={candles}
           visible={shown}
@@ -1241,7 +1267,9 @@ export function OrbBreakout({ phase, onReady }: ExerciseProps) {
           domain={review ? [96.5, 114.5] : [98.5, 105.5]}
           highlight={highlight}
           onCandleClick={review ? undefined : (i) => i < visible && setPick(i)}
-          under={(s) => (
+          under={(s) => {
+            edge.current = (s.x(visible - 1) + (s.right - s.left) / candles.length) / s.W
+            return (
             <>
               <rect
                 x={s.x(0) - s.bw}
@@ -1267,7 +1295,8 @@ export function OrbBreakout({ phase, onReady }: ExerciseProps) {
                 />
               ))}
             </>
-          )}
+            )
+          }}
         >
           {(s) =>
             review && (
@@ -1288,6 +1317,7 @@ export function OrbBreakout({ phase, onReady }: ExerciseProps) {
             )
           }
         </CandleChart>
+        </div>
       </ChartFrame>
       <p className="px-1 text-[13px] text-white/50">NQ, 5-minute candles. The bars at the bottom are volume. Tap a candle, or slide and let go on one.</p>
     </div>
