@@ -124,14 +124,17 @@ type Corners = "8" | "12"
 const cornersPref = createPref<Corners>("wce-academy-corners", ["8", "12"], "12")
 
 // Course art: the metal topic coins or the 3D print objects (one folded-paper object per course topic).
-type CourseArt = "coins" | "print"
-const courseArtPref = createPref<CourseArt>("wce-course-art", ["coins", "print"], "print")
+// 6 Nov: "chrome" = the chrome stills made this week for v3 (Google Flow), "trade" = Cesar's objects redone in dark brushed steel (three).
+type CourseArt = "coins" | "print" | "chrome" | "trade"
+const courseArtPref = createPref<CourseArt>("wce-course-art", ["coins", "print", "chrome", "trade"], "print")
 export const useCourseArt = courseArtPref.use
+export const setCourseArt = courseArtPref.set
 
 // League art: the 3D print trophies (metal inks, on a plinth), the v1 topic coins re-struck per league, or the ore renders.
-export type LeagueArt = "print" | "coins" | "ore"
-const leagueArtPref = createPref<LeagueArt>("wce-league-art", ["print", "coins", "ore"], "print")
+export type LeagueArt = "print" | "coins" | "ore" | "chrome" | "trade"
+const leagueArtPref = createPref<LeagueArt>("wce-league-art", ["print", "coins", "ore", "chrome", "trade"], "print")
 export const useLeagueArt = leagueArtPref.use
+export const setLeagueArt = leagueArtPref.set
 
 // Course reward: finishing a course used to show a 20% IQ Capital coupon (placeholder, never approved). Off by default
 // (28 Oct): which rewards Training can give is still open with Amira and Fabio.
@@ -383,6 +386,20 @@ export function HomeLayoutSwitch() {
             options={[
               { id: "off", title: "No reward on course complete" },
               { id: "coupon", title: "20% IQ Capital coupon (placeholder)" },
+            ]}
+          />
+          <Segmented<"print" | "chrome" | "trade" | "">
+            label="Art"
+            value={courseArt === leagueArt && (courseArt === "print" || courseArt === "chrome" || courseArt === "trade") ? courseArt : ""}
+            onChange={(v) => {
+              if (!v) return
+              courseArtPref.set(v)
+              leagueArtPref.set(v)
+            }}
+            options={[
+              { id: "print", label: "Cesar", title: "Cesar's print objects (courses and league)" },
+              { id: "chrome", label: "Now", title: "This week's chrome stills (courses and league)" },
+              { id: "trade", label: "New", title: "New: the steel illustrations with trading symbols, animated in three (courses and league)" },
             ]}
           />
           <Segmented

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { TOPICS, type Topic, type TopicId } from "@/lib/topics"
 import { CoinCanvas } from "@/components/coin/coin"
 import { LEAGUE_MODEL, PrintObject } from "@/components/print-objects/print-object"
+import { TradeObject } from "@/components/trade-objects/trade-object"
 import { useLeagueArt } from "@/components/prototype-panel"
 
 // The v1 topic coins, re-struck for the leagues: each league takes one coin's outline and pattern in its own alloy.
@@ -36,8 +37,22 @@ export function OreArt({ ore, mystery, className }: { ore: Ore; mystery?: boolea
   if (art === "ore") return <OreRender ore={ore} mystery={mystery} className={className} />
   return (
     <div className={cn("relative aspect-square rounded-full p-[7%] ring-1 ring-white/10", className)}>
-      <div className={cn("relative size-full rounded-full [container-type:size]", art === "print" && DISC[ore])}>
-        {art === "print" ? <LeaguePrint ore={ore} mystery={mystery} /> : <LeagueCoin ore={ore} mystery={mystery} />}
+      <div className={cn("relative size-full rounded-full [container-type:size]", art === "print" && DISC[ore], (art === "chrome" || art === "trade") && "bg-black/60")}>
+        {art === "print" ? (
+          <LeaguePrint ore={ore} mystery={mystery} />
+        ) : art === "trade" ? (
+          <LeagueTrade ore={ore} mystery={mystery} />
+        ) : art === "chrome" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/wce/art-chrome/league-${ore}.jpg`}
+            alt=""
+            draggable={false}
+            className={cn("absolute inset-0 size-full rounded-full mix-blend-screen select-none", mystery && "opacity-30 grayscale")}
+          />
+        ) : (
+          <LeagueCoin ore={ore} mystery={mystery} />
+        )}
         {mystery && (
           <span className="absolute inset-0 grid place-items-center font-serif text-[30cqw] text-white/75">?</span>
         )}
@@ -77,6 +92,15 @@ function LeaguePrint({ ore, mystery }: { ore: Ore; mystery?: boolean }) {
   return (
     <div ref={ref} className={cn("absolute inset-[3%]", mystery && "opacity-30 grayscale")}>
       <PrintObject model={LEAGUE_PRINT[ore]} hovered={hovered && !mystery} className="absolute inset-0" />
+    </div>
+  )
+}
+
+function LeagueTrade({ ore, mystery }: { ore: Ore; mystery?: boolean }) {
+  const [ref, hovered] = useHostHover()
+  return (
+    <div ref={ref} className={cn("absolute inset-[3%]", mystery && "opacity-30 grayscale")}>
+      <TradeObject kind={ore} hovered={hovered && !mystery} className="absolute inset-0" />
     </div>
   )
 }

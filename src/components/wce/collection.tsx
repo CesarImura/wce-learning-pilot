@@ -25,7 +25,7 @@ function CoinCard({ topic, progress }: { topic: Topic; progress: Progress }) {
     <div className={cn("glass flex gap-4 p-4 sm:flex-col sm:items-center sm:gap-5 sm:p-6 sm:text-center", locked && "opacity-80")}>
       <div
         className="grid shrink-0 place-items-center rounded-[10px] p-2 sm:w-full sm:py-6"
-        style={art === "print" ? undefined : { backgroundImage: `radial-gradient(circle at 50% 50%, ${topic.color}1f, transparent 65%)` }}
+        style={art === "print" || art === "trade" ? undefined : { backgroundImage: `radial-gradient(circle at 50% 50%, ${topic.color}1f, transparent 65%)` }}
       >
         <TopicCoin topicId={topic.id} size={176} className="max-sm:size-[104px]!" />
       </div>

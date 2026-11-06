@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Coin } from "@/components/coin/coin"
 import { PrintObject } from "@/components/print-objects/print-object"
+import { TradeObject } from "@/components/trade-objects/trade-object"
 import { useCourseArt } from "@/components/prototype-panel"
 import { fmtPoints, topicProgress, useProgress } from "@/lib/progress"
 import { TOPICS, type TopicId } from "@/lib/topics"
@@ -51,6 +52,33 @@ export function TopicCoin({
       host.removeEventListener("pointerleave", off)
     }
   }, [art])
+  if (art === "trade")
+    return (
+      <div
+        ref={ref}
+        style={{ width: size, height: size }}
+        className={cn("relative shrink-0", tp.state === "locked" && "opacity-40", className)}
+      >
+        <TradeObject kind={topicId} hovered={hovered || !!autoplay} active={active} className="absolute inset-0" />
+      </div>
+    )
+  if (art === "chrome")
+    return (
+      <div
+        ref={ref}
+        style={{ width: size, height: size }}
+        className={cn("relative shrink-0", tp.state === "locked" && "opacity-40", className)}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/wce/art-chrome/coin-${topicId}.jpg`}
+          alt=""
+          draggable={false}
+          className={cn("absolute inset-0 size-full mix-blend-screen transition-transform duration-300 select-none", hovered && "scale-[1.05]")}
+          style={{ maskImage: "radial-gradient(circle, #000 58%, transparent 71%)", WebkitMaskImage: "radial-gradient(circle, #000 58%, transparent 71%)" }}
+        />
+      </div>
+    )
   if (art === "print")
     return (
       <div
